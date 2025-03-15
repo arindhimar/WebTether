@@ -1,0 +1,34 @@
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    username VARCHAR(255),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT,
+    auth_provider VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE websites (
+    id UUID PRIMARY KEY,
+    url TEXT NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE validators (
+    id UUID PRIMARY KEY,
+    public_key TEXT NOT NULL,
+    ip_address VARCHAR(50),
+    location TEXT,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE website_pings (
+    id UUID PRIMARY KEY,
+    website_id UUID REFERENCES websites(id) ON DELETE CASCADE,
+    validator_id UUID REFERENCES validators(id) ON DELETE SET NULL,
+    ping_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    latency INTEGER NOT NULL,
+    status VARCHAR(50) NOT NULL
+);
