@@ -159,6 +159,7 @@ export default function WebsiteDetails() {
     )
   }
 
+  // Add a null check for website data
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
@@ -172,8 +173,8 @@ export default function WebsiteDetails() {
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               </Link>
-              <h1 className="text-2xl font-bold">{website.url}</h1>
-              <StatusBadge status={website.status} />
+              <h1 className="text-2xl font-bold">{website?.url || "Loading..."}</h1>
+              {website && <StatusBadge status={website.status} />}
             </div>
 
             <div className="flex items-center gap-2">
@@ -185,7 +186,7 @@ export default function WebsiteDetails() {
             </div>
           </div>
 
-          <p className="text-muted-foreground mt-2">{website.description}</p>
+          <p className="text-muted-foreground mt-2">{website?.description || ""}</p>
         </motion.div>
 
         <motion.div

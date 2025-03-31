@@ -1,32 +1,42 @@
 import axios from "axios"
 
-// Create an axios instance with base URL and default headers
+// Change the API creation to include a fallback URL
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
 })
 
-// Add a request interceptor to include auth token in all requests
+// Track ongoing requests to prevent duplicates
+const pendingRequests = new Map()
+
+// Add debugging to help identify the 404 issue
 api.interceptors.request.use(
   async (config) => {
-    // Get the token from localStorage
-    const token = localStorage.getItem("clerk-token")
-    const clerkUserId = localStorage.getItem("clerk-user-id")
+    // Create a request key based on method and URL
+    const requestKey = `${config.method}:${config.url}`
 
-    // Prevent infinite loops for certain endpoints
-    const isUserEndpoint = config.url.includes("/users/clerk/")
+    // Log the request for debugging
+    console.log(`API Request: ${requestKey}`)
 
-    // Add a timestamp to prevent caching issues
-    if (isUserEndpoint) {
-      config.params = { ...config.params, _t: new Date().getTime() }
+    // If there's already a pending request with this key, cancel this one
+    if (pendingRequests.has(requestKey)) {
+      console.log(`Duplicate request canceled: ${requestKey}`)
+      // Return a canceled request
+      return {
+        ...config,
+        cancelToken: new axios.CancelToken((cancel) => cancel("Duplicate request canceled")),
+      }
     }
 
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`
-    }
+    // Add this request to pending
+    pendingRequests.set(requestKey, true)
 
+    // Get the clerk user ID from localStorage
+    const clerkUserId = localStorage.getItem("clerk-user-id") || ""
+
+    // Add clerk user ID to headers if available
     if (clerkUserId) {
       config.headers["X-Clerk-User-Id"] = clerkUserId
     }
@@ -34,35 +44,50 @@ api.interceptors.request.use(
     return config
   },
   (error) => {
+    console.error("API Request Error:", error)
     return Promise.reject(error)
   },
 )
 
-// Add a response interceptor to handle common errors
+// Update the response interceptor to log errors
 api.interceptors.response.use(
   (response) => {
+    // Remove from pending requests
+    const requestKey = `${response.config.method}:${response.config.url}`
+    pendingRequests.delete(requestKey)
+
     return response
   },
   (error) => {
+    // Log the error for debugging
+    console.error("API Response Error:", error.response || error)
+
+    // If request was canceled due to our duplicate detection, just return a resolved promise
+    if (axios.isCancel(error)) {
+      return Promise.resolve({ data: null, status: "canceled" })
+    }
+
+    // Remove from pending requests
+    if (error.config) {
+      const requestKey = `${error.config.method}:${error.config.url}`
+      pendingRequests.delete(requestKey)
+    }
+
     // Handle 401 Unauthorized errors
     if (error.response && error.response.status === 401) {
       // Clear auth data
-      localStorage.removeItem("clerk-token")
-      localStorage.removeItem("clerk-user-id")
+      localStorage.removeItem("user-profile")
+      localStorage.removeItem("auth-initialized")
 
       // Redirect to login page if not already there
       if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/signup")) {
         window.location.href = "/login"
       }
     }
+
     return Promise.reject(error)
   },
 )
-
-// Auth related API calls
-export const authAPI = {
-  verifyToken: (clerkUserId) => api.post("/auth/verify", { clerk_user_id: clerkUserId }),
-}
 
 // User related API calls
 export const userAPI = {

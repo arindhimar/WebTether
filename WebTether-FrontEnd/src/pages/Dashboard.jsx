@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Navbar } from "../components/Navbar"
@@ -18,10 +18,12 @@ import {
   ExternalLink,
   Loader2,
   AlertTriangle,
+  RefreshCw
 } from "lucide-react"
 import { formatNumber } from "../lib/utils"
 import { websiteAPI } from "../services/api"
 import { useToast } from "../hooks/use-toast"
+import { useAuth } from "../contexts/AuthContext"
 import AddWebsiteModal from "../components/AddWebsiteModal"
 
 // Animation variants
@@ -78,14 +80,10 @@ const StatusBadge = ({ status }) => {
 }
 
 export default function Dashboard() {
+  const { isInitialized } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [websites, setWebsites] = useState([])
-  const [stats, setStats] = useState({
-    totalWebsites: 0,
-    activeValidators: 0,
-    overallUptime: "0%",
-    averageLatency: "0ms",
-  })
+  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState({
     websites: true,
     stats: true,
@@ -96,73 +94,112 @@ export default function Dashboard() {
   })
   const { toast } = useToast()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [dataFetched, setDataFetched] = useState(false)
+  const hasFetchedData = useRef(false)
 
-  // Fetch websites - using useCallback to prevent infinite loops
-  const fetchWebsites = useCallback(async () => {
-    if (dataFetched) return
-
+  // Fetch websites
+  const fetchWebsites = useCallback(async (signal) => {
     try {
-      setLoading((prev) => ({ ...prev, websites: true }))
-      const response = await websiteAPI.getAllWebsites()
+      setLoading(prev => ({ ...prev, websites: true }))
+      const response = await websiteAPI.getAllWebsites({ signal })
       setWebsites(response.data)
-      setError((prev) => ({ ...prev, websites: null }))
+      setError(prev => ({ ...prev, websites: null }))
     } catch (err) {
-      console.error("Error fetching websites:", err)
-      setError((prev) => ({ ...prev, websites: "Failed to load websites" }))
-      toast({
-        title: "Error",
-        description: "Failed to load websites. Please try again later.",
-        type: "error",
-      })
+      if (err.name !== 'AbortError') {
+        setError(prev => ({ ...prev, websites: "Failed to load websites" }))
+        toast({
+          title: "Error",
+          description: "Failed to load websites. Please try again later.",
+          variant: "destructive",
+        })
+      }
     } finally {
-      setLoading((prev) => ({ ...prev, websites: false }))
+      setLoading(prev => ({ ...prev, websites: false }))
     }
-  }, [toast, dataFetched])
+  }, [toast])
 
-  // Fetch stats - using useCallback to prevent infinite loops
-  const fetchStats = useCallback(async () => {
-    if (dataFetched) return
-
+  // Fetch stats
+  const fetchStats = useCallback(async (signal) => {
     try {
-      setLoading((prev) => ({ ...prev, stats: true }))
-      const response = await websiteAPI.getWebsiteStats()
-      setStats(response.data)
-      setError((prev) => ({ ...prev, stats: "Failed to load statistics" }))
+      setLoading(prev => ({ ...prev, stats: true }))
+      const response = await websiteAPI.getWebsiteStats({ signal })
+      setStats(response.data || {
+        totalWebsites: 0,
+        activeValidators: 0,
+        overallUptime: "0%",
+        averageLatency: "0ms",
+      })
+      setError(prev => ({ ...prev, stats: null }))
     } catch (err) {
-      console.error("Error fetching stats:", err)
-      setError((prev) => ({ ...prev, stats: "Failed to load statistics" }))
+      if (err.name !== 'AbortError') {
+        setError(prev => ({ ...prev, stats: "Failed to load statistics" }))
+      }
     } finally {
-      setLoading((prev) => ({ ...prev, stats: false }))
-      setDataFetched(true)
+      setLoading(prev => ({ ...prev, stats: false }))
     }
-  }, [dataFetched])
+  }, [])
 
-  // Fetch data only once when component mounts
+  // Fetch all data
+  const fetchAllData = useCallback(async (signal) => {
+    try {
+      setLoading({ websites: true, stats: true })
+      const [websitesRes, statsRes] = await Promise.all([
+        fetchWebsites(signal),
+        fetchStats(signal)
+      ])
+    } catch (err) {
+      console.error("Error fetching data:", err)
+    }
+  }, [fetchWebsites, fetchStats])
+
+  // Fetch data when auth is initialized
   useEffect(() => {
-    if (!dataFetched) {
-      fetchWebsites()
-      fetchStats()
-    }
-  }, [fetchWebsites, fetchStats, dataFetched])
+    const controller = new AbortController()
+    const signal = controller.signal
 
-  const filteredWebsites = websites.filter((website) => website.url.toLowerCase().includes(searchQuery.toLowerCase()))
+    if (isInitialized && !hasFetchedData.current) {
+      hasFetchedData.current = true
+      fetchAllData(signal)
+    }
+
+    return () => {
+      controller.abort()
+    }
+  }, [isInitialized, fetchAllData])
+
+  const filteredWebsites = websites.filter((website) => 
+    website.url.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   const handleAddWebsite = () => {
     setIsAddModalOpen(true)
   }
 
-  const handleWebsiteAdded = (website) => {
-    setWebsites([...websites, website])
-    // Refresh stats without causing a loop
-    websiteAPI
-      .getWebsiteStats()
-      .then((response) => {
-        setStats(response.data)
+  const handleWebsiteAdded = async (website) => {
+    try {
+      // Optimistic update
+      setWebsites(prev => [...prev, website])
+      
+      // Refresh stats
+      await fetchStats(new AbortController().signal)
+      
+      toast({
+        title: "Success",
+        description: "Website added successfully",
       })
-      .catch((err) => {
-        console.error("Error refreshing stats:", err)
+    } catch (error) {
+      // Revert if error
+      setWebsites(prev => prev.filter(w => w.id !== website.id))
+      toast({
+        title: "Error",
+        description: "Failed to update website stats",
+        variant: "destructive",
       })
+    }
+  }
+
+  const handleRefresh = async () => {
+    const controller = new AbortController()
+    await fetchAllData(controller.signal)
   }
 
   return (
@@ -181,10 +218,21 @@ export default function Dashboard() {
             <p className="text-muted-foreground">Monitor your websites and view their status</p>
           </div>
 
-          <Button className="md:self-end flex items-center gap-2" onClick={handleAddWebsite}>
-            <Plus className="w-4 h-4" />
-            <span>Add Website</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={loading.websites || loading.stats}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${(loading.websites || loading.stats) ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button className="flex items-center gap-2" onClick={handleAddWebsite}>
+              <Plus className="w-4 h-4" />
+              <span>Add Website</span>
+            </Button>
+          </div>
         </motion.div>
 
         <motion.div
@@ -193,6 +241,7 @@ export default function Dashboard() {
           animate="visible"
           variants={staggerContainer}
         >
+          {/* Total Websites Card */}
           <motion.div variants={fadeIn}>
             <Card>
               <CardHeader className="pb-2">
@@ -203,7 +252,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-center h-10">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : error.stats ? (
+                ) : error.stats || !stats ? (
                   <div className="flex items-center text-muted-foreground">
                     <AlertTriangle className="h-5 w-5 mr-2" />
                     <span>Error loading data</span>
@@ -220,6 +269,7 @@ export default function Dashboard() {
             </Card>
           </motion.div>
 
+          {/* Active Validators Card */}
           <motion.div variants={fadeIn}>
             <Card>
               <CardHeader className="pb-2">
@@ -230,7 +280,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-center h-10">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : error.stats ? (
+                ) : error.stats || !stats ? (
                   <div className="flex items-center text-muted-foreground">
                     <AlertTriangle className="h-5 w-5 mr-2" />
                     <span>Error loading data</span>
@@ -247,6 +297,7 @@ export default function Dashboard() {
             </Card>
           </motion.div>
 
+          {/* Overall Uptime Card */}
           <motion.div variants={fadeIn}>
             <Card>
               <CardHeader className="pb-2">
@@ -257,7 +308,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-center h-10">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : error.stats ? (
+                ) : error.stats || !stats ? (
                   <div className="flex items-center text-muted-foreground">
                     <AlertTriangle className="h-5 w-5 mr-2" />
                     <span>Error loading data</span>
@@ -274,6 +325,7 @@ export default function Dashboard() {
             </Card>
           </motion.div>
 
+          {/* Average Latency Card */}
           <motion.div variants={fadeIn}>
             <Card>
               <CardHeader className="pb-2">
@@ -284,7 +336,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-center h-10">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : error.stats ? (
+                ) : error.stats || !stats ? (
                   <div className="flex items-center text-muted-foreground">
                     <AlertTriangle className="h-5 w-5 mr-2" />
                     <span>Error loading data</span>
@@ -328,15 +380,7 @@ export default function Dashboard() {
                 <div className="text-center py-12 text-muted-foreground">
                   <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-red-500" />
                   <p>{error.websites}</p>
-                  <Button
-                    variant="link"
-                    onClick={() => {
-                      setDataFetched(false)
-                      fetchWebsites()
-                      fetchStats()
-                    }}
-                    className="mt-2"
-                  >
+                  <Button variant="link" onClick={() => fetchWebsites(new AbortController().signal)} className="mt-2">
                     Try again
                   </Button>
                 </div>
@@ -432,7 +476,7 @@ export default function Dashboard() {
           </Card>
         </motion.div>
       </main>
-      {/* Add Website Modal */}
+      
       <AddWebsiteModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -441,4 +485,3 @@ export default function Dashboard() {
     </div>
   )
 }
-

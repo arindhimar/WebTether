@@ -5,15 +5,36 @@ import { X } from "lucide-react"
 import { Button } from "./ui/button"
 import { websiteAPI } from "../services/api"
 import { useToast } from "../hooks/use-toast"
+import { useAuth } from "../contexts/AuthContext"
 
 export default function AddWebsiteModal({ isOpen, onClose, onWebsiteAdded }) {
   const [url, setUrl] = useState("")
   const [description, setDescription] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const { isInitialized } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    if (!isInitialized) {
+      toast({
+        title: "Error",
+        description: "Please wait for authentication to complete.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!url) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid URL",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -25,21 +46,20 @@ export default function AddWebsiteModal({ isOpen, onClose, onWebsiteAdded }) {
       })
 
       toast({
-        title: "Website added",
+        title: "Success",
         description: "Your website has been added successfully.",
-        type: "success",
       })
 
       setUrl("")
       setDescription("")
-      onWebsiteAdded(response.data.website)
+      onWebsiteAdded(response.data)
       onClose()
     } catch (error) {
       console.error("Error adding website:", error)
       toast({
         title: "Error",
-        description: "There was an error adding your website. Please try again.",
-        type: "error",
+        description: error.response?.data?.message || "There was an error adding your website. Please try again.",
+        variant: "destructive",
       })
     } finally {
       setIsLoading(false)
@@ -93,7 +113,14 @@ export default function AddWebsiteModal({ isOpen, onClose, onWebsiteAdded }) {
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Adding..." : "Add Website"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Adding...
+                </>
+              ) : (
+                "Add Website"
+              )}
             </Button>
           </div>
         </form>
@@ -101,4 +128,3 @@ export default function AddWebsiteModal({ isOpen, onClose, onWebsiteAdded }) {
     </div>
   )
 }
-

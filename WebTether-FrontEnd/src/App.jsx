@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react"
-import { ThemeProvider } from "./components/theme-provider"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { ClerkProvider } from "@clerk/clerk-react"
+import { ThemeProvider } from "./components/ThemeProvider"
+import { AuthProvider, useAuth } from "./contexts/AuthContext"
 import LandingPage from "./pages/LandingPage"
 import Dashboard from "./pages/Dashboard"
 import WebsiteDetails from "./pages/WebsiteDetails"
@@ -16,14 +17,32 @@ import LoginPage from "./pages/auth/LoginPage"
 import SignupPage from "./pages/auth/SignupPage"
 import { dark } from "@clerk/themes"
 import { Toaster } from "./components/ui/toaster"
-import { Logo } from "./components/Logo"
 import AuthCallback from "./pages/auth/AuthCallback"
+import LoadingScreen from "./components/LoadingScreen"
 
 // Your Clerk publishable key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!PUBLISHABLE_KEY) {
   console.warn("Missing Clerk Publishable Key")
+}
+
+// Protected route component
+function ProtectedRoute({ children }) {
+  const { isLoaded, isSignedIn, isInitialized, isAuthenticating } = useAuth()
+
+  // Show loading while Clerk is loading or we're initializing auth
+  if (!isLoaded || isAuthenticating || !isInitialized) {
+    return <LoadingScreen message={!isLoaded ? "Loading..." : "Setting up your account..."} />
+  }
+
+  // If not signed in, redirect to login
+  if (!isSignedIn) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Otherwise, render the protected content
+  return children
 }
 
 function App() {
@@ -64,109 +83,72 @@ function App() {
           identityPreviewEditButton: "text-primary hover:text-primary/90",
         },
       }}
-      afterSignInUrl="/auth/callback"
-      afterSignUpUrl="/auth/callback"
+      signInFallbackRedirectUrl="/auth/callback"
+      signUpFallbackRedirectUrl="/auth/callback"
       signInUrl="/login"
       signUpUrl="/signup"
-      navigate={(to) => (window.location.href = to)}
     >
       <ThemeProvider defaultTheme="dark">
-        <Router>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* Protected routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <>
-                  <SignedIn>
+              {/* Protected routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
                     <Dashboard />
-                  </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
-              }
-            />
-            <Route
-              path="/website/:id"
-              element={
-                <>
-                  <SignedIn>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/website/:id"
+                element={
+                  <ProtectedRoute>
                     <WebsiteDetails />
-                  </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
-              }
-            />
-            <Route
-              path="/validators"
-              element={
-                <>
-                  <SignedIn>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/validators"
+                element={
+                  <ProtectedRoute>
                     <ValidatorsPage />
-                  </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <>
-                  <SignedIn>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute>
                     <ReportsPage />
-                  </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <>
-                  <SignedIn>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
                     <SettingsPage />
-                  </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
-              }
-            />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Error pages */}
-            <Route path="/500" element={<ServerErrorPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Router>
-        <Toaster />
+              {/* Error pages */}
+              <Route path="/500" element={<ServerErrorPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Router>
+          <Toaster />
+        </AuthProvider>
       </ThemeProvider>
     </ClerkProvider>
-  )
-}
-
-// Loading component for Clerk
-export function ClerkLoading() {
-  return (
-    <div className="h-screen w-full flex flex-col items-center justify-center bg-background">
-      <Logo size="large" animated={true} />
-      <div className="mt-8 flex items-center space-x-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-        <p className="text-lg text-foreground">Loading WebTether...</p>
-      </div>
-    </div>
   )
 }
 

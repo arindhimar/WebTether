@@ -3,23 +3,31 @@
 import { useState, useEffect } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { useTheme } from "./theme-provider"
+import { useTheme } from "./ThemeProvider"
+import { useAuth } from "../contexts/AuthContext"
+import { useUser } from "@clerk/clerk-react"
 import { Button } from "./ui/button"
-import { Logo } from "./ui/logo"
-import { Menu, X, Sun, Moon, User, LogOut, SettingsIcon } from "lucide-react"
-import { useClerk, useUser } from "@clerk/clerk-react"
+import { Logo } from "./Logo"
+import { Menu, X, Sun, Moon, User, LogOut, Settings } from "lucide-react"
+import { useToast } from "../hooks/use-toast"
 
 export function Navbar() {
   const { theme, setTheme } = useTheme()
+  const { isSignedIn, userProfile, signOut } = useAuth()
+  const { user } = useUser()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
-  const { signOut } = useClerk()
-  const { isSignedIn, user } = useUser()
+  const { toast } = useToast()
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
+    const newTheme = theme === "dark" ? "light" : "dark"
+    setTheme(newTheme)
+    toast({
+      title: `${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} mode activated`,
+      description: `You've switched to ${newTheme} mode.`,
+    })
   }
 
   const toggleMenu = () => {
@@ -32,6 +40,10 @@ export function Navbar() {
 
   const handleSignOut = () => {
     signOut()
+    toast({
+      title: "Signed out",
+      description: "You've been successfully signed out.",
+    })
   }
 
   const isActive = (path) => {
@@ -52,6 +64,11 @@ export function Navbar() {
       window.removeEventListener("scroll", handleScroll)
     }
   }, [])
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMenuOpen(false)
+  }, [location])
 
   return (
     <motion.nav
@@ -111,6 +128,7 @@ export function Navbar() {
               className="p-2 rounded-md bg-accent text-accent-foreground hover:bg-accent/80 focus:outline-none focus:ring-2 focus:ring-primary/50"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
@@ -137,7 +155,7 @@ export function Navbar() {
                     <img
                       src={user.imageUrl || "/placeholder.svg"}
                       alt={user.fullName || "User"}
-                      className="h-8 w-8 rounded-full object-cover"
+                      className="h-8 w-8 rounded-full object-cover border border-border"
                     />
                   ) : (
                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -149,18 +167,27 @@ export function Navbar() {
                 <AnimatePresence>
                   {isProfileOpen && (
                     <motion.div
-                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-card ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-card ring-1 ring-black ring-opacity-5 focus:outline-none z-10 border border-border"
                       initial={{ opacity: 0, scale: 0.95, y: -10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: -10 }}
                       transition={{ duration: 0.2 }}
                     >
+                      <div className="px-4 py-2 border-b border-border">
+                        <p className="text-sm font-medium text-foreground">
+                          {user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {user?.primaryEmailAddress?.emailAddress}
+                        </p>
+                      </div>
                       <Link
                         to="/settings"
                         className="block px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors duration-150"
+                        onClick={() => setIsProfileOpen(false)}
                       >
                         <div className="flex items-center">
-                          <SettingsIcon size={16} className="mr-2" />
+                          <Settings size={16} className="mr-2" />
                           Settings
                         </div>
                       </Link>
@@ -199,6 +226,7 @@ export function Navbar() {
               className="p-2 rounded-md bg-accent text-accent-foreground hover:bg-accent/80 focus:outline-none focus:ring-2 focus:ring-primary/50 mr-2"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
             >
               {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
             </motion.button>
@@ -207,6 +235,7 @@ export function Navbar() {
               className="inline-flex items-center justify-center p-2 rounded-md text-muted-foreground hover:text-foreground focus:outline-none"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
+              aria-label="Toggle menu"
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </motion.button>
@@ -233,7 +262,6 @@ export function Navbar() {
                         ? "border-blue-500 text-blue-500 bg-blue-500/10 dark:border-blue-400 dark:text-blue-400"
                         : "border-transparent text-muted-foreground hover:bg-accent"
                     }`}
-                    onClick={() => setIsMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
@@ -244,7 +272,6 @@ export function Navbar() {
                         ? "border-blue-500 text-blue-500 bg-blue-500/10 dark:border-blue-400 dark:text-blue-400"
                         : "border-transparent text-muted-foreground hover:bg-accent"
                     }`}
-                    onClick={() => setIsMenuOpen(false)}
                   >
                     Validators
                   </Link>
@@ -255,7 +282,6 @@ export function Navbar() {
                         ? "border-blue-500 text-blue-500 bg-blue-500/10 dark:border-blue-400 dark:text-blue-400"
                         : "border-transparent text-muted-foreground hover:bg-accent"
                     }`}
-                    onClick={() => setIsMenuOpen(false)}
                   >
                     Reports
                   </Link>
@@ -266,7 +292,6 @@ export function Navbar() {
                         ? "border-primary text-primary bg-primary/10"
                         : "border-transparent text-muted-foreground hover:bg-accent"
                     }`}
-                    onClick={() => setIsMenuOpen(false)}
                   >
                     Settings
                   </Link>
@@ -279,12 +304,12 @@ export function Navbar() {
                 </>
               ) : (
                 <div className="px-3 py-3 flex flex-col space-y-2">
-                  <Link to="/sign-in" onClick={() => setIsMenuOpen(false)}>
+                  <Link to="/login">
                     <Button variant="outline" className="w-full">
                       Log in
                     </Button>
                   </Link>
-                  <Link to="/sign-up" onClick={() => setIsMenuOpen(false)}>
+                  <Link to="/signup">
                     <Button className="w-full">Sign up</Button>
                   </Link>
                 </div>
