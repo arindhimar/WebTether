@@ -1,9 +1,9 @@
-import { SignUp } from "@clerk/clerk-react"
+import { SignIn } from "@clerk/clerk-react"
 
-export default function SignUpPage() {
+export default function SignInPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <SignUp
+      <SignIn
         appearance={{
           elements: {
             rootBox: "mx-auto",

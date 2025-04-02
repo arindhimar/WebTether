@@ -1,0 +1,5 @@
+users(uid,uemail,upass)(we wil be using clerk for that)
+sites(sid,url,uid)
+validator(vid,publickey,uid)
+ticker(tid,sid,vid,timestamp,region,status,latency)
+report(rid,tid,code,message)

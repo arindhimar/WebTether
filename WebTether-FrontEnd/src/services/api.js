@@ -106,5 +106,17 @@ export const websiteAPI = {
   getWebsiteStats: () => api.get("/websites/stats"),
 }
 
+// Validator related API calls
+export const validatorAPI = {
+  getAllValidators: () => api.get("/validators"),
+  getValidatorById: (id) => api.get(`/validators/${id}`),
+  createValidator: (validatorData) => api.post("/validators", validatorData),
+  updateValidator: (id, validatorData) => api.put(`/validators/${id}`, validatorData),
+  deleteValidator: (id) => api.delete(`/validators/${id}`),
+  getValidatorStats: () => api.get("/validators/stats"),
+  assignWebsite: (validatorId, websiteId) => api.post(`/validators/${validatorId}/websites`, { website_id: websiteId }),
+  removeWebsite: (validatorId, websiteId) => api.delete(`/validators/${validatorId}/websites/${websiteId}`),
+}
+
 export default api
 
