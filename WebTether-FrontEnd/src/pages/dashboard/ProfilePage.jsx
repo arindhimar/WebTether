@@ -1,5 +1,7 @@
+"use client"
+
 import { useState } from "react"
-import { AlertTriangle, Calendar, Coins, Edit, LogOut, Mail, RefreshCw, Shield, Trash2, User } from 'lucide-react'
+import { AlertTriangle, Calendar, Coins, Edit, LogOut, Mail, RefreshCw, Shield, Trash2 } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card"
 import {
@@ -16,6 +18,9 @@ import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert"
 import { Progress } from "../../components/ui/progress"
 import { Separator } from "../../components/ui/separator"
 import { useToast } from "../../components/ui/use-toast"
+import { useUser } from "@clerk/clerk-react"
+import { useBackendAuthContext } from "../../context/backend-auth-context"
+import { format } from "date-fns"
 
 export default function ProfilePage() {
   const [isValidator, setIsValidator] = useState(true)
@@ -28,6 +33,8 @@ export default function ProfilePage() {
     progress: 65,
   })
   const { toast } = useToast()
+  const { user } = useUser()
+  const { backendUser } = useBackendAuthContext()
 
   const deleteAccount = () => {
     setIsDeleting(false)
@@ -38,23 +45,8 @@ export default function ProfilePage() {
     })
   }
 
-  // Mock user data
-  const user = {
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    registeredDate: "May 10, 2023",
-    websites: 4,
-    avatar: "/placeholder-user.jpg",
-  }
-
-  // Mock activity data
-  const recentActivity = [
-    { id: 1, action: "Added website", target: "https://example.com", date: "2 days ago" },
-    { id: 2, action: "Validated website", target: "https://test.org", date: "3 days ago" },
-    { id: 3, action: "Reported validator", target: "validator123", date: "1 week ago" },
-    { id: 4, action: "Earned reward", target: "10 coins", date: "1 week ago" },
-    { id: 5, action: "Added website", target: "https://demo.net", date: "2 weeks ago" },
-  ]
+  // Format the registration date
+  const formattedDate = backendUser?.created_at ? format(new Date(backendUser.created_at), "MMMM d, yyyy") : "Unknown"
 
   return (
     <div className="space-y-6">
@@ -72,16 +64,17 @@ export default function ProfilePage() {
         <Card>
           <CardHeader className="flex flex-row items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarImage src={user?.imageUrl || "/placeholder-user.jpg"} alt={user?.fullName || "User"} />
               <AvatarFallback>
-                <User className="h-8 w-8" />
+                {user?.firstName?.[0] || ""}
+                {user?.lastName?.[0] || ""}
               </AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle>{user.name}</CardTitle>
+              <CardTitle>{user?.fullName || "User"}</CardTitle>
               <CardDescription className="flex items-center gap-1">
                 <Mail className="h-3 w-3" />
-                {user.email}
+                {user?.primaryEmailAddress?.emailAddress || backendUser?.email || "No email"}
               </CardDescription>
             </div>
           </CardHeader>
@@ -90,12 +83,12 @@ export default function ProfilePage() {
               <span className="text-sm text-muted-foreground">Registered</span>
               <span className="flex items-center gap-1 text-sm">
                 <Calendar className="h-3 w-3" />
-                {user.registeredDate}
+                {formattedDate}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Websites</span>
-              <span className="text-sm">{user.websites}</span>
+              <span className="text-sm">{backendUser?.websites?.length || 0}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Validator Status</span>
@@ -122,6 +115,7 @@ export default function ProfilePage() {
           </CardFooter>
         </Card>
 
+        {/* Rest of the component remains the same */}
         <div className="space-y-6">
           {isValidator && (
             <Card>
@@ -179,7 +173,14 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
+                {/* Mock activity data */}
+                {[
+                  { id: 1, action: "Added website", target: "https://example.com", date: "2 days ago" },
+                  { id: 2, action: "Validated website", target: "https://test.org", date: "3 days ago" },
+                  { id: 3, action: "Reported validator", target: "validator123", date: "1 week ago" },
+                  { id: 4, action: "Earned reward", target: "10 coins", date: "1 week ago" },
+                  { id: 5, action: "Added website", target: "https://demo.net", date: "2 weeks ago" },
+                ].map((activity, index, array) => (
                   <div key={activity.id}>
                     <div className="flex items-center justify-between">
                       <div>
@@ -188,7 +189,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-sm text-muted-foreground">{activity.date}</div>
                     </div>
-                    {index < recentActivity.length - 1 && <Separator className="mt-4" />}
+                    {index < array.length - 1 && <Separator className="mt-4" />}
                   </div>
                 ))}
               </div>
@@ -234,3 +235,4 @@ export default function ProfilePage() {
     </div>
   )
 }
+

@@ -4,56 +4,56 @@
 
 @layer base {
   :root {
-    --background: 222 47% 98%;
+    --background: 220 25% 97%;
     --foreground: 222 47% 11%;
 
-    --card: 222 47% 98%;
+    --card: 220 25% 98%;
     --card-foreground: 222 47% 11%;
 
-    --popover: 222 47% 98%;
+    --popover: 220 25% 98%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 222 47% 30%;
+    --primary: 220 70% 50%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
+    --secondary: 220 20% 92%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 220 20% 92%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
+    --accent: 220 30% 90%;
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222 47% 30%;
+    --border: 220 20% 85%;
+    --input: 220 20% 85%;
+    --ring: 220 70% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar: 222 47% 98%;
+    --sidebar: 220 30% 98%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-border: 220 20% 85%;
+    --sidebar-accent: 220 30% 90%;
     --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-ring: 222 47% 30%;
+    --sidebar-ring: 220 70% 50%;
   }
 
   .dark {
-    --background: 222 47% 11%;
+    --background: 222 47% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 14%;
+    --card: 222 47% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 11%;
+    --popover: 222 47% 8%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 220 70% 60%;
+    --primary-foreground: 222 47% 8%;
 
     --secondary: 217 32% 17%;
     --secondary-foreground: 210 40% 98%;
@@ -69,14 +69,14 @@
 
     --border: 217 32% 17%;
     --input: 217 32% 17%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 224.3 76.3% 60%;
 
-    --sidebar: 222 47% 14%;
+    --sidebar: 222 47% 10%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-border: 217 32% 17%;
     --sidebar-accent: 217 32% 20%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-ring: 224.3 76.3% 48%;
+    --sidebar-ring: 224.3 76.3% 60%;
   }
 }
 
@@ -86,12 +86,64 @@
   }
   body {
     @apply bg-background text-foreground;
+    @apply min-h-screen w-full;
+  }
+  #root {
+    @apply min-h-screen w-full max-w-none m-0 p-0;
+  }
+
+  /* Custom scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/30 rounded-full hover:bg-primary/50 transition-colors;
+  }
+
+  /* For Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.3) transparent;
+  }
+
+  /* Fix double scrollbar issue */
+  html,
+  body,
+  #root {
+    @apply overflow-x-hidden;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Change from overflow-x-hidden to prevent double scrollbars */
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  #root {
+    @apply min-h-screen w-full max-w-none m-0 p-0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Allow vertical scrolling only at the root level */
+  }
+
+  /* Add smooth scrolling for better UX */
+  html {
+    scroll-behavior: smooth;
   }
 }
 
 @layer components {
   .animate-in-card {
-    @apply transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:bg-accent/30;
+    @apply transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:scale-[1.02] hover:bg-accent/30;
   }
 
   .animate-in-button {
@@ -140,6 +192,66 @@
 
   .glass-effect {
     @apply bg-white/10 backdrop-blur-md dark:bg-black/10;
+  }
+
+  .btn-glow {
+    @apply relative overflow-hidden;
+  }
+
+  .btn-glow::after {
+    @apply content-[''] absolute top-0 left-[-100%] w-full h-full bg-gradient-shine;
+    animation: shimmer 2s infinite;
+  }
+
+  .card-3d {
+    @apply transition-all duration-500 hover:shadow-glow;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+  }
+
+  .card-3d:hover {
+    transform: rotateY(5deg) rotateX(5deg);
+  }
+
+  .ripple-effect {
+    @apply relative overflow-hidden;
+  }
+
+  .ripple-effect::after {
+    @apply content-[''] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-primary/30;
+    animation: ripple 0.6s linear forwards;
+  }
+
+  .nav-item {
+    @apply relative;
+  }
+
+  .nav-item::after {
+    @apply content-[''] absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300;
+  }
+
+  .nav-item:hover::after {
+    @apply w-full;
+  }
+
+  .floating-element {
+    @apply animate-float;
+  }
+
+  .wave-animation {
+    @apply animate-wave;
+  }
+
+  .glow-on-hover {
+    @apply transition-shadow duration-300 hover:shadow-glow;
+  }
+
+  .glow-text {
+    @apply text-primary transition-all duration-300 hover:text-opacity-80 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)];
+  }
+
+  .mesh-gradient {
+    @apply bg-gradient-mesh;
   }
 }
 

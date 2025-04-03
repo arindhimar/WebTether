@@ -2,6 +2,7 @@
 
 import { Routes, Route, Navigate } from "react-router-dom"
 import { useAuth } from "@clerk/clerk-react"
+import { useBackendAuthContext } from "./context/backend-auth-context"
 
 // Layouts
 import DashboardLayout from "./layouts/DashboardLayout"
@@ -20,8 +21,9 @@ import SettingsPage from "./pages/SettingsPage"
 // Protected route component
 const ProtectedRoute = ({ children }) => {
   const { isSignedIn, isLoaded } = useAuth()
+  const { backendUser, isLoading } = useBackendAuthContext()
 
-  if (!isLoaded) {
+  if (!isLoaded || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -34,6 +36,18 @@ const ProtectedRoute = ({ children }) => {
 
   if (!isSignedIn) {
     return <Navigate to="/sign-in" replace />
+  }
+
+  // Check if user exists in backend
+  if (!backendUser) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+          <p className="text-lg font-medium">Setting up your account...</p>
+        </div>
+      </div>
+    )
   }
 
   return children

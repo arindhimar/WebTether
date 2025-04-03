@@ -5,6 +5,7 @@ from models.db import db
 from routes.user_routes import user_routes
 from routes.website_routes import website_routes
 from routes.validator_routes import validator_routes
+from routes.report_routes import report_routes
 from routes.auth_routes import auth_routes
 
 def create_app():
@@ -28,6 +29,7 @@ def create_app():
     app.register_blueprint(user_routes, url_prefix='/api/users')
     app.register_blueprint(website_routes, url_prefix='/api/websites')
     app.register_blueprint(validator_routes, url_prefix='/api/validators')
+    app.register_blueprint(report_routes, url_prefix='/api/reports')
     app.register_blueprint(auth_routes, url_prefix='/api/auth')
 
     # Create tables (only once, or use migrations)
