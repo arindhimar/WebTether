@@ -118,13 +118,21 @@ export const websiteAPI = {
 export const validatorAPI = {
   getAllValidators: () => api.get("/validators"),
   getValidatorById: (id) => api.get(`/validators/${id}`),
-  createValidator: (validatorData) => api.post("/validators", validatorData),
+  createValidator: (validatorData) => api.post("/validators/", validatorData),
   updateValidator: (id, validatorData) => api.put(`/validators/${id}`, validatorData),
   deleteValidator: (id) => api.delete(`/validators/${id}`),
   getValidatorStats: () => api.get("/validators/stats"),
   assignWebsite: (validatorId, websiteId) => api.post(`/validators/${validatorId}/websites`, { website_id: websiteId }),
   removeWebsite: (validatorId, websiteId) => api.delete(`/validators/${validatorId}/websites/${websiteId}`),
   validateWebsite: (validatorId, websiteId) => api.post(`/validators/${validatorId}/validate/${websiteId}`),
+  // New methods for enhanced validator functionality
+  pingWebsite: (validatorId, websiteId) => api.post(`/validators/${validatorId}/ping`, { website_id: websiteId }),
+  getEnhancedStats: () => api.get("/validators/enhanced-stats"),
+  // Generic methods for custom endpoints
+  get: (endpoint) => api.get(`/validators${endpoint}`),
+  post: (endpoint, data) => api.post(`/validators${endpoint}`, data),
+  put: (endpoint, data) => api.put(`/validators${endpoint}`, data),
+  delete: (endpoint) => api.delete(`/validators${endpoint}`),
 }
 
 // Report related API calls
@@ -145,5 +153,24 @@ export const settingsAPI = {
   updateSecuritySettings: (securitySettings) => api.put("/settings/security", securitySettings),
 }
 
-export default api
+export const getValidators = async () => {
+  try {
+    const response = await api.get("/validators")
+    return response.data
+  } catch (error) {
+    console.error("API Response Error:", error.response || error)
+    throw error
+  }
+}
 
+export const createValidator = async (validatorData) => {
+  try {
+    const response = await api.post("/validators/", validatorData)
+    return response.data
+  } catch (error) {
+    console.error("API Response Error:", error.response || error)
+    throw error
+  }
+}
+
+export default api

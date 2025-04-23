@@ -1,46 +1,82 @@
 from flask import Blueprint
-from controllers.validator_controller import ValidatorController
-from middleware.auth_middleware import token_required
+from controllers.validator_controller import (
+    get_all_validators,
+    create_validator,
+    get_validator,
+    update_validator,
+    delete_validator,
+    get_validator_stats,
+    assign_website_to_validator,
+    remove_website_from_validator,
+    ping_website,
+    get_enhanced_validator_stats
+)
+from middleware.auth_middleware import auth_required
 
-validator_routes = Blueprint('validator_routes', __name__)
+validator_bp = Blueprint('validator', __name__)
 
-@validator_routes.route('', methods=['GET'])
-@token_required
-def get_all_validators():
-    return ValidatorController.get_all_validators()
+# Get all validators
+@validator_bp.route('/', methods=['GET'])
+@auth_required
+def get_validators():
+    return get_all_validators()
 
-@validator_routes.route('', methods=['POST'])
-@token_required
-def create_validator():
-    return ValidatorController.create_validator()
+# Create a new validator
+@validator_bp.route('/', methods=['POST'])
+@auth_required
+def create_new_validator():
+    return create_validator()
 
-@validator_routes.route('/<string:validator_id>', methods=['GET'])
-@token_required
-def get_validator(validator_id):
-    return ValidatorController.get_validator(validator_id)
+# Get a specific validator
+@validator_bp.route('/<validator_id>', methods=['GET'])
+@auth_required
+def get_validator_by_id(validator_id):
+    return get_validator(validator_id)
 
-@validator_routes.route('/<string:validator_id>', methods=['PUT'])
-@token_required
-def update_validator(validator_id):
-    return ValidatorController.update_validator(validator_id)
+# Update a validator
+@validator_bp.route('/<validator_id>', methods=['PUT'])
+@auth_required
+def update_validator_by_id(validator_id):
+    return update_validator(validator_id)
 
-@validator_routes.route('/<string:validator_id>', methods=['DELETE'])
-@token_required
-def delete_validator(validator_id):
-    return ValidatorController.delete_validator(validator_id)
+# Delete a validator
+@validator_bp.route('/<validator_id>', methods=['DELETE'])
+@auth_required
+def delete_validator_by_id(validator_id):
+    return delete_validator(validator_id)
 
-@validator_routes.route('/stats', methods=['GET'])
-@token_required
-def get_validator_stats():
-    return ValidatorController.get_validator_stats()
+# Get validator statistics
+@validator_bp.route('/stats', methods=['GET'])
+@auth_required
+def get_stats():
+    return get_validator_stats()
 
-@validator_routes.route('/<string:validator_id>/websites', methods=['POST'])
-@token_required
+# Get enhanced validator statistics
+@validator_bp.route('/enhanced-stats', methods=['GET'])
+@auth_required
+def get_enhanced_stats():
+    return get_enhanced_validator_stats()
+
+# Assign a website to a validator
+@validator_bp.route('/<validator_id>/websites', methods=['POST'])
+@auth_required
 def assign_website(validator_id):
-    return ValidatorController.assign_website(validator_id)
+    return assign_website_to_validator(validator_id)
 
-@validator_routes.route('/<string:validator_id>/websites/<string:website_id>', methods=['DELETE'])
-@token_required
+# Remove a website from a validator
+@validator_bp.route('/<validator_id>/websites/<website_id>', methods=['DELETE'])
+@auth_required
 def remove_website(validator_id, website_id):
-    return ValidatorController.remove_website(validator_id, website_id)
+    return remove_website_from_validator(validator_id, website_id)
 
+# Ping a website using a validator
+@validator_bp.route('/<validator_id>/ping', methods=['POST'])
+@auth_required
+def ping_website_with_validator(validator_id):
+    return ping_website(validator_id)
+
+# Ping a specific website using a validator
+@validator_bp.route('/<validator_id>/ping/<website_id>', methods=['POST'])
+@auth_required
+def ping_specific_website(validator_id, website_id):
+    return ping_website(validator_id, website_id)

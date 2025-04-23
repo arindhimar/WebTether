@@ -10,7 +10,7 @@ import api from "../services/api"
  * their information is also stored in our backend database
  */
 export function useBackendAuth() {
-  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth()
+  const { isSignedIn, isLoaded: isAuthLoaded, getToken } = useAuth()
   const { user, isLoaded: isUserLoaded } = useUser()
   const [backendUser, setBackendUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -50,7 +50,7 @@ export function useBackendAuth() {
 
         // Store clerk user ID and token in localStorage for API interceptors
         localStorage.setItem("clerk-user-id", user.id)
-        const token = await user.getToken()
+        const token = await getToken()
         if (token) {
           localStorage.setItem("clerk-token", token)
         }
@@ -98,7 +98,7 @@ export function useBackendAuth() {
     }
 
     syncUserWithBackend()
-  }, [isSignedIn, isAuthLoaded, isUserLoaded, user])
+  }, [isSignedIn, isAuthLoaded, isUserLoaded, user, getToken])
 
   return {
     backendUser,

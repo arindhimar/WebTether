@@ -15,6 +15,9 @@ class Validator(db.Model):
     user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     updated_at = db.Column(db.TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+    total_pings = db.Column(db.Integer, default=0)
+    successful_pings = db.Column(db.Integer, default=0)
+    rewards = db.Column(db.Float, default=0.0)
 
     # Define relationship with websites through validator_websites
     websites = db.relationship('Website', secondary='validator_websites', backref=db.backref('validators', lazy='dynamic'))
@@ -33,6 +36,9 @@ class Validator(db.Model):
             'websites': len(self.websites),
             'lastPing': self.last_ping.isoformat() if self.last_ping else None,
             'user_id': self.user_id,
+            'total_pings': self.total_pings,
+            'successful_pings': self.successful_pings,
+            'rewards': self.rewards,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -44,4 +50,3 @@ class ValidatorWebsite(db.Model):
     validator_id = db.Column(db.String(36), db.ForeignKey('validators.id'), primary_key=True)
     website_id = db.Column(db.String(36), db.ForeignKey('websites.id'), primary_key=True)
     created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
-

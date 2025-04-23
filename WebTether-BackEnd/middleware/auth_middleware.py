@@ -15,6 +15,7 @@ def token_required(f):
             # Get the clerk user ID from the header
             clerk_user_id = request.headers.get('X-Clerk-User-Id')
             
+            
             # For development, if we have a clerk_user_id, we'll consider the request authenticated
             if clerk_user_id:
                 # Try to find the user
@@ -44,3 +45,5 @@ def token_required(f):
             
     return decorated
 
+# Add alias for token_required as auth_required for backward compatibility
+auth_required = token_required
