@@ -34,3 +34,8 @@ def delete_website(website_id):
 def get_website_stats():
     return WebsiteController.get_website_stats()
 
+# Toggle website public status
+@website_routes.route('/<string:website_id>/toggle-public', methods=['POST'])
+@token_required
+def toggle_public_status(website_id):
+    return WebsiteController.toggle_public_status(website_id)

@@ -1,3 +1,6 @@
+# Make sure the Website model has the is_public field
+# If it doesn't exist, you'll need to add it and run a database migration
+
 from datetime import datetime
 import uuid
 from models.db import db
@@ -14,13 +17,11 @@ class Website(db.Model):
     last_checked = db.Column(db.TIMESTAMP, nullable=True)
     monitoring_frequency = db.Column(db.String(50), default='5 minutes')
     alerts_enabled = db.Column(db.Boolean, default=True)
+    is_public = db.Column(db.Boolean, default=False)  # This field is important
     user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     updated_at = db.Column(db.TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def __repr__(self):
-        return f'<Website {self.url}>'
-    
     def to_dict(self):
         return {
             'id': self.id,
@@ -32,6 +33,7 @@ class Website(db.Model):
             'last_checked': self.last_checked.isoformat() if self.last_checked else None,
             'monitoring_frequency': self.monitoring_frequency,
             'alerts_enabled': self.alerts_enabled,
+            'is_public': self.is_public,
             'user_id': self.user_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None

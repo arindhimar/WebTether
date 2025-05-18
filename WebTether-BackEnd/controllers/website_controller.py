@@ -137,3 +137,89 @@ class WebsiteController:
             current_app.logger.error(f"Error getting website stats: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @staticmethod
+    def share_website(website_id):
+        try:
+            # Get Clerk user_id from request headers
+            clerk_user_id = request.headers.get('X-Clerk-User-Id')
+            
+            if not clerk_user_id:
+                return jsonify({"error": "User ID is required"}), 400
+            
+            # Get internal user ID
+            # user_id = get_internal_user_id(clerk_user_id) # Assuming this function exists elsewhere
+            user = request.user
+            user_id = user.id
+            if not user_id:
+                return jsonify({"error": "User not found"}), 404
+            
+            # Get data from request
+            data = request.get_json()
+            
+            if not data.get('email'):
+                return jsonify({"error": "Email of user to share with is required"}), 400
+            
+            # Get website by ID
+            website = Website.query.filter_by(id=website_id, user_id=user_id).first()
+            
+            if not website:
+                return jsonify({"error": "Website not found or you don't have permission"}), 404
+            
+            # Find user to share with
+            # share_with_user = User.query.filter_by(email=data.get('email')).first() # Assuming User model exists
+            # if not share_with_user:
+            #     return jsonify({"error": "User to share with not found"}), 404
+            
+            # Create a website share record
+            # website_share = WebsiteShare( # Assuming WebsiteShare model exists
+            #     id=str(uuid.uuid4()),
+            #     website_id=website_id,
+            #     owner_id=user_id,
+            #     shared_with_id=share_with_user.id,
+            #     permission_level=data.get('permission_level', 'read')
+            # )
+            
+            # db.session.add(website_share)
+            # db.session.commit()
+            
+            return jsonify({"message": "Website sharing is not fully implemented yet"}), 200
+        
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error sharing website: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @staticmethod
+    def toggle_public_status(website_id):
+        try:
+            # Get Clerk user_id from request headers
+            clerk_user_id = request.headers.get('X-Clerk-User-Id')
+            
+            if not clerk_user_id:
+                return jsonify({"error": "User ID is required"}), 400
+            
+            # Get internal user ID
+            # user_id = get_internal_user_id(clerk_user_id)
+            user = request.user
+            user_id = user.id
+            if not user_id:
+                return jsonify({"error": "User not found"}), 404
+            
+            # Get website by ID
+            website = Website.query.filter_by(id=website_id, user_id=user_id).first_or_404()
+            
+            # Toggle public status
+            website.is_public = not website.is_public
+            
+            # Save changes
+            db.session.commit()
+            
+            return jsonify({
+                "message": f"Website is now {'public' if website.is_public else 'private'}",
+                "is_public": website.is_public
+            }), 200
+        
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error toggling website public status: {str(e)}")
+            return jsonify({"error": str(e)}), 500

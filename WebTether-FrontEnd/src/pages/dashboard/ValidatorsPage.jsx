@@ -1,9 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CheckCircle2, Coins, RefreshCw, Shield, UserPlus } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
-import { CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../../components/ui/card"
+import { Progress } from "../../components/ui/progress"
+import { Badge } from "../../components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -13,551 +16,993 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../components/ui/dialog"
-import { Badge } from "../../components/ui/badge"
-import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert"
-import { Progress } from "../../components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
-import { useToast } from "../../components/ui/use-toast"
 import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/label"
-import { validatorAPI, websiteAPI } from "../../services/api"
-import { useBackendAuthContext } from "../../context/backend-auth-context"
-import { AnimatedCard } from "../../components/ui/animated-card"
-import { motion } from "framer-motion"
+import { Separator } from "../../components/ui/separator"
+import { useToast } from "../../hooks/use-toast"
+import { useBackendAuth } from "../../hooks/use-backend-auth"
+import {
+  Activity,
+  AlertTriangle,
+  Check,
+  Globe,
+  MapPin,
+  Plus,
+  RefreshCw,
+  Server,
+  Settings,
+  Trash2,
+  User,
+  Wifi,
+  X,
+} from "lucide-react"
+import api from "../../services/api"
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
-}
+const ValidatorsPage = () => {
+  const { toast } = useToast()
+  const navigate = useNavigate()
+  const { isAuthenticated, isLoading: authLoading } = useBackendAuth()
 
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: { type: "spring", stiffness: 100 },
-  },
-}
-
-export default function ValidatorsPage() {
-  const [isValidator, setIsValidator] = useState(false)
-  const [isRegistering, setIsRegistering] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [validators, setValidators] = useState([])
-  const [activeValidator, setActiveValidator] = useState(null)
-  const [websitesToValidate, setWebsitesToValidate] = useState([])
-  const [validatedWebsites, setValidatedWebsites] = useState([])
-  const [validatorStats, setValidatorStats] = useState({
+  const [websites, setWebsites] = useState([])
+  const [availableWebsites, setAvailableWebsites] = useState([])
+  const [stats, setStats] = useState({
+    totalValidators: 0,
+    activeValidators: 0,
+    locations: 0,
+    monitoredWebsites: 0,
     totalPings: 0,
     successfulPings: 0,
     totalRewards: 0,
     level: 1,
     progress: 0,
   })
-  const [formData, setFormData] = useState({
+
+  const [isLoading, setIsLoading] = useState(true)
+  const [isCreating, setIsCreating] = useState(false)
+  const [isPinging, setPinging] = useState(false)
+  const [selectedValidator, setSelectedValidator] = useState(null)
+  const [selectedWebsite, setSelectedWebsite] = useState(null)
+  const [pingResults, setPingResults] = useState(null)
+  const [activeTab, setActiveTab] = useState("validators")
+
+  // Form state
+  const [newValidator, setNewValidator] = useState({
     name: "",
     location: "",
+    ip: "",
+    websites: [],
   })
-  const { toast } = useToast()
-  const { backendUser } = useBackendAuthContext()
 
-  // Fetch validators and websites data
-  const fetchData = async () => {
-    if (!backendUser) return
-
+  // Fetch validators
+  const fetchValidators = async () => {
     try {
-      setIsLoading(true)
-
-      // Check if user is already a validator
-      const validatorsResponse = await validatorAPI.getAllValidators()
-
-      if (validatorsResponse.data && validatorsResponse.data.length > 0) {
-        setIsValidator(true)
-        setValidators(validatorsResponse.data)
-        setActiveValidator(validatorsResponse.data[0])
-
-        // Get validator stats
-        try {
-          const statsResponse = await validatorAPI.getValidatorStats()
-          if (statsResponse.data) {
-            setValidatorStats({
-              totalPings: statsResponse.data.totalPings || 0,
-              successfulPings: statsResponse.data.successfulPings || 0,
-              totalRewards: statsResponse.data.totalRewards || 0,
-              level: statsResponse.data.level || 1,
-              progress: statsResponse.data.progress || 0,
-            })
-          }
-        } catch (error) {
-          console.error("Error fetching validator stats:", error)
-        }
-      }
-
-      // Get websites to validate
-      const websitesResponse = await websiteAPI.getAllWebsites()
-      if (websitesResponse.data && Array.isArray(websitesResponse.data)) {
-        const websites = websitesResponse.data.map((website) => ({
-          id: website.id,
-          url: website.url,
-          lastValidated: website.last_checked ? new Date(website.last_checked).toLocaleString() : "Never",
-          status: website.status || "unknown",
-          reward: Math.floor(Math.random() * 10) + 5, // Random reward between 5-15 (will be determined by backend)
-        }))
-
-        setWebsitesToValidate(websites)
-        setValidatedWebsites(websites.filter((w) => w.lastValidated !== "Never"))
-      }
+      const response = await api.validatorAPI.getAllValidators()
+      setValidators(response.data)
     } catch (error) {
-      console.error("Error initializing validators page:", error)
+      console.error("Error fetching validators:", error)
       toast({
         title: "Error",
-        description: "Failed to load validator data. Please try again.",
+        description: "Failed to fetch validators. Please try again.",
         variant: "destructive",
       })
+    }
+  }
+
+  // Fetch websites
+  const fetchWebsites = async () => {
+    try {
+      const response = await api.websiteAPI.getAllWebsites()
+      setWebsites(response.data)
+    } catch (error) {
+      console.error("Error fetching websites:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch websites. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Fetch all available websites (owned + public)
+  const fetchAvailableWebsites = async () => {
+    try {
+      const response = await api.validatorAPI.getAvailableWebsites()
+      setAvailableWebsites(response.data)
+    } catch (error) {
+      console.error("Error fetching available websites:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch available websites. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Fetch validator stats
+  const fetchValidatorStats = async () => {
+    try {
+      // Try to fetch enhanced stats first
+      try {
+        const response = await api.validatorAPI.get("/enhanced-stats")
+        setStats(response.data)
+      } catch (error) {
+        // Fall back to regular stats if enhanced stats endpoint doesn't exist
+        const response = await api.validatorAPI.get("/stats")
+        setStats({
+          ...stats,
+          totalValidators: response.data.totalValidators,
+          activeValidators: response.data.activeValidators,
+          locations: response.data.locations,
+          monitoredWebsites: response.data.monitoredWebsites,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching validator stats:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch validator statistics. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Load all data
+  const loadData = async () => {
+    setIsLoading(true)
+    try {
+      await Promise.all([fetchValidators(), fetchWebsites(), fetchValidatorStats(), fetchAvailableWebsites()])
+    } catch (error) {
+      console.error("Error loading data:", error)
     } finally {
       setIsLoading(false)
-      setIsRefreshing(false)
     }
   }
 
+  // Initial data load
   useEffect(() => {
-    fetchData()
-  }, [backendUser])
-
-  const registerAsValidator = async () => {
-    try {
-      // Validate form data
-      if (!formData.name || !formData.location) {
-        toast({
-          title: "Missing Information",
-          description: "Please provide both a name and location for your validator.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Create validator in backend
-      const response = await validatorAPI.createValidator({
-        name: formData.name,
-        location: formData.location,
-        // IP is auto-generated on the backend
-      })
-
-      if (response.data && response.data.validator) {
-        setIsValidator(true)
-        setIsRegistering(false)
-        setActiveValidator(response.data.validator)
-
-        toast({
-          title: "Registration Successful",
-          description: "You are now registered as a validator. Start pinging websites to earn rewards!",
-        })
-
-        // Refresh data
-        fetchData()
-      }
-    } catch (error) {
-      console.error("Error registering as validator:", error)
-      toast({
-        title: "Registration Failed",
-        description: "Unable to register you as a validator. Please try again later.",
-        variant: "destructive",
-      })
+    if (isAuthenticated && !authLoading) {
+      loadData()
     }
-  }
+  }, [isAuthenticated, authLoading])
 
-  const pingWebsite = async (websiteId) => {
-    if (!activeValidator) {
+  // Create validator
+  const handleCreateValidator = async () => {
+    if (!newValidator.name || !newValidator.location) {
       toast({
-        title: "Error",
-        description: "No active validator found. Please refresh the page.",
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       })
       return
     }
 
+    setIsCreating(true)
     try {
-      // Call the backend to ping the website
-      const response = await validatorAPI.pingWebsite(activeValidator.id, websiteId)
-
-      if (response.data) {
-        const { success, status, reward } = response.data
-
-        // Update the website's last validated time in our local state
-        setWebsitesToValidate((prev) =>
-          prev.map((website) =>
-            website.id === websiteId
-              ? {
-                  ...website,
-                  lastValidated: "just now",
-                  status: status,
-                }
-              : website,
-          ),
-        )
-
-        // Add to validated websites list if not already there
-        const website = websitesToValidate.find((w) => w.id === websiteId)
-        if (website) {
-          const updatedWebsite = {
-            ...website,
-            lastValidated: "just now",
-            status: status,
-          }
-
-          setValidatedWebsites((prev) => {
-            const exists = prev.some((w) => w.id === websiteId)
-            if (exists) {
-              return prev.map((w) => (w.id === websiteId ? updatedWebsite : w))
-            } else {
-              return [updatedWebsite, ...prev]
-            }
-          })
-        }
-
-        // Refresh validator stats
-        const statsResponse = await validatorAPI.getValidatorStats()
-        if (statsResponse.data) {
-          setValidatorStats({
-            totalPings: statsResponse.data.totalPings || 0,
-            successfulPings: statsResponse.data.successfulPings || 0,
-            totalRewards: statsResponse.data.totalRewards || 0,
-            level: statsResponse.data.level || 1,
-            progress: statsResponse.data.progress || 0,
-          })
-        }
-
-        // Show toast notification
-        toast({
-          title: `Website ${status === "online" ? "is up" : "is down"}`,
-          description: success
-            ? `You earned ${reward} coins for validating this website!`
-            : "No rewards earned for this validation.",
-          variant: success ? "default" : "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error pinging website:", error)
+      const response = await api.validatorAPI.createValidator(newValidator)
+      setValidators([...validators, response.data.validator])
+      setNewValidator({
+        name: "",
+        location: "",
+        ip: "",
+        websites: [],
+      })
       toast({
-        title: "Ping Failed",
-        description: "Unable to ping the website. Please try again.",
+        title: "Success",
+        description: "Validator created successfully.",
+        variant: "default",
+      })
+
+      // Refresh stats
+      fetchValidatorStats()
+    } catch (error) {
+      console.error("Error creating validator:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create validator. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  // Delete validator
+  const handleDeleteValidator = async (validatorId) => {
+    try {
+      await api.validatorAPI.deleteValidator(validatorId)
+      setValidators(validators.filter((v) => v.id !== validatorId))
+      toast({
+        title: "Success",
+        description: "Validator deleted successfully.",
+        variant: "default",
+      })
+
+      // Refresh stats
+      fetchValidatorStats()
+    } catch (error) {
+      console.error("Error deleting validator:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete validator. Please try again.",
         variant: "destructive",
       })
     }
   }
 
-  const refreshData = () => {
-    setIsRefreshing(true)
-    fetchData()
+  // Ping website
+  const handlePingWebsite = async (validatorId, websiteId) => {
+    setPinging(true)
+    setPingResults(null)
+
+    try {
+      const response = await api.validatorAPI.post(`/${validatorId}/ping/${websiteId}`)
+      setPingResults(response.data)
+
+      // Update validators list to reflect the ping
+      fetchValidators()
+
+      // Update websites list to reflect status changes
+      fetchWebsites()
+
+      // Update available websites
+      fetchAvailableWebsites()
+
+      // Update stats
+      fetchValidatorStats()
+
+      toast({
+        title: response.data.success ? "Success" : "Warning",
+        description: response.data.success
+          ? `Website pinged successfully. Response time: ${response.data.latency}ms`
+          : "Website is down or unreachable.",
+        variant: response.data.success ? "default" : "destructive",
+      })
+    } catch (error) {
+      console.error("Error pinging website:", error)
+      toast({
+        title: "Error",
+        description: "Failed to ping website. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setPinging(false)
+    }
   }
 
-  if (isLoading) {
+  // Handle website selection for a validator
+  const handleWebsiteSelection = (websiteId) => {
+    if (newValidator.websites.includes(websiteId)) {
+      setNewValidator({
+        ...newValidator,
+        websites: newValidator.websites.filter((id) => id !== websiteId),
+      })
+    } else {
+      setNewValidator({
+        ...newValidator,
+        websites: [...newValidator.websites, websiteId],
+      })
+    }
+  }
+
+  // Format uptime as a percentage
+  const formatUptime = (uptime) => {
+    if (typeof uptime === "string" && uptime.includes("%")) {
+      return uptime
+    }
+    return `${Number.parseFloat(uptime).toFixed(2)}%`
+  }
+
+  // Get status badge color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "online":
+      case "up":
+        return "bg-green-500"
+      case "offline":
+      case "down":
+        return "bg-red-500"
+      case "degraded":
+        return "bg-yellow-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  // Get status text
+  const getStatusText = (status) => {
+    switch (status) {
+      case "online":
+      case "up":
+        return "Online"
+      case "offline":
+      case "down":
+        return "Offline"
+      case "degraded":
+        return "Degraded"
+      default:
+        return "Unknown"
+    }
+  }
+
+  // Get ownership badge color
+  const getOwnershipColor = (ownership) => {
+    switch (ownership) {
+      case "owned":
+        return "bg-blue-500"
+      case "public":
+        return "bg-purple-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated && !authLoading) {
+      navigate("/sign-in")
+    }
+  }, [isAuthenticated, authLoading, navigate])
+
+  if (!isAuthenticated) {
+    return null
+  }
+
+  if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-          <p className="text-lg font-medium">Loading validator data...</p>
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     )
   }
 
   return (
-    <motion.div className="space-y-6" initial="hidden" animate="visible" variants={containerVariants}>
-      <motion.div className="flex items-center justify-between" variants={itemVariants}>
-        <h2 className="text-3xl font-bold tracking-tight gradient-text">Validators</h2>
-        {!isValidator && (
-          <Dialog open={isRegistering} onOpenChange={setIsRegistering}>
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Validators</h1>
+        <div className="flex space-x-2">
+          <Button onClick={loadData} variant="outline" size="sm" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Dialog>
             <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Become a Validator
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Validator
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Become a Validator</DialogTitle>
-                <DialogDescription>
-                  As a validator, you can ping websites to verify their status and earn rewards.
-                </DialogDescription>
+                <DialogTitle>Create New Validator</DialogTitle>
+                <DialogDescription>Add a new validator to monitor your websites.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <h3 className="font-medium">Validator Benefits:</h3>
-                  <ul className="list-disc pl-5 text-sm">
-                    <li>Earn coins for each successful validation</li>
-                    <li>Level up as you validate more websites</li>
-                    <li>Gain access to premium features</li>
-                    <li>Help maintain the integrity of the platform</li>
-                  </ul>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="font-medium">Validator Responsibilities:</h3>
-                  <ul className="list-disc pl-5 text-sm">
-                    <li>Honestly report website status</li>
-                    <li>Regularly validate websites</li>
-                    <li>Maintain a high accuracy rate</li>
-                  </ul>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="validator-name">Validator Name</Label>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
                   <Input
-                    id="validator-name"
-                    value={formData.name}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter a name for your validator"
+                    id="name"
+                    value={newValidator.name}
+                    onChange={(e) => setNewValidator({ ...newValidator, name: e.target.value })}
+                    className="col-span-3"
+                    placeholder="My Validator"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="validator-location">Location</Label>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="location" className="text-right">
+                    Location
+                  </Label>
                   <Input
-                    id="validator-location"
-                    value={formData.location}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                    placeholder="e.g., New York, USA"
+                    id="location"
+                    value={newValidator.location}
+                    onChange={(e) => setNewValidator({ ...newValidator, location: e.target.value })}
+                    className="col-span-3"
+                    placeholder="New York, USA"
                   />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="ip" className="text-right">
+                    IP Address
+                  </Label>
+                  <Input
+                    id="ip"
+                    value={newValidator.ip}
+                    onChange={(e) => setNewValidator({ ...newValidator, ip: e.target.value })}
+                    className="col-span-3"
+                    placeholder="192.168.1.1 (Optional)"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right pt-2">Websites</Label>
+                  <div className="col-span-3 space-y-2">
+                    {availableWebsites.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No websites available. Add websites first.</p>
+                    ) : (
+                      availableWebsites.map((website) => (
+                        <div key={website.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`website-${website.id}`}
+                            checked={newValidator.websites.includes(website.id)}
+                            onChange={() => handleWebsiteSelection(website.id)}
+                            className="rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                          <label htmlFor={`website-${website.id}`} className="text-sm flex items-center">
+                            {website.url}
+                            {website.ownership === "public" && <Badge className="ml-2 bg-purple-500">Public</Badge>}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsRegistering(false)}>
-                  Cancel
+                <Button
+                  onClick={handleCreateValidator}
+                  disabled={isCreating || !newValidator.name || !newValidator.location}
+                >
+                  {isCreating ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Validator"
+                  )}
                 </Button>
-                <Button onClick={registerAsValidator}>Register as Validator</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        )}
-      </motion.div>
+        </div>
+      </div>
 
-      {!isValidator ? (
-        <motion.div variants={itemVariants}>
-          <Alert>
-            <Shield className="h-4 w-4" />
-            <AlertTitle>Not a Validator</AlertTitle>
-            <AlertDescription>
-              You are not registered as a validator. Register to start validating websites and earning rewards.
-            </AlertDescription>
-          </Alert>
-        </motion.div>
-      ) : (
-        <>
-          <motion.div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" variants={containerVariants}>
-            <motion.div variants={itemVariants}>
-              <AnimatedCard>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Pings</CardTitle>
-                  <RefreshCw className="h-4 w-4 text-muted-foreground" />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Validators</p>
+                <h3 className="text-2xl font-bold">{stats.totalValidators}</h3>
+              </div>
+              <Server className="h-8 w-8 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Active Validators</p>
+                <h3 className="text-2xl font-bold">{stats.activeValidators}</h3>
+              </div>
+              <Activity className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Locations</p>
+                <h3 className="text-2xl font-bold">{stats.locations}</h3>
+              </div>
+              <MapPin className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Monitored Websites</p>
+                <h3 className="text-2xl font-bold">{stats.monitoredWebsites}</h3>
+              </div>
+              <Globe className="h-8 w-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Validator Level */}
+      {stats.level && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Validator Level</CardTitle>
+            <CardDescription>Your current validator level and progress</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Level {stats.level}</span>
+              {stats.level < 5 && <span className="text-sm text-muted-foreground">Level {stats.level + 1}</span>}
+            </div>
+            <Progress value={stats.level < 5 ? stats.progress : 100} className="h-2" />
+            <div className="mt-2 text-sm text-muted-foreground">
+              {stats.level < 5 ? `${stats.progress}% progress to next level` : "Maximum level reached"}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Validators List */}
+      <Tabs defaultValue="validators" className="mb-6" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="validators">Validators</TabsTrigger>
+          <TabsTrigger value="websites">Assigned Websites</TabsTrigger>
+          <TabsTrigger value="public-websites">Public Websites</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="validators">
+          {isLoading ? (
+            <div className="flex justify-center p-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : validators.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center p-8">
+                <Server className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Validators Yet</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  You haven't added any validators yet. Add your first validator to start monitoring websites.
+                </p>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Your First Validator
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">{/* Same dialog content as above */}</DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {validators.map((validator) => (
+                <Card key={validator.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <CardTitle>{validator.name}</CardTitle>
+                      <Badge className={getStatusColor(validator.status)}>{getStatusText(validator.status)}</Badge>
+                    </div>
+                    <CardDescription>
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        {validator.location}
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">IP Address:</span>
+                        <span>{validator.ip}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Uptime:</span>
+                        <span>{formatUptime(validator.uptime)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Last Ping:</span>
+                        <span>{validator.last_ping ? new Date(validator.last_ping).toLocaleString() : "Never"}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Websites:</span>
+                        <span>{validator.websites ? validator.websites.length : 0}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <Button variant="outline" size="sm" onClick={() => handleDeleteValidator(validator.id)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedValidator(validator)
+                      }}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Manage
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="websites">
+          {isLoading ? (
+            <div className="flex justify-center p-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : validators.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center p-8">
+                <Globe className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Validators Yet</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  You need to add validators before you can assign websites to them.
+                </p>
+                <Button onClick={() => setActiveTab("validators")}>View Validators</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {validators.map((validator) => (
+                <Card key={validator.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>{validator.name}</CardTitle>
+                      <Badge className={getStatusColor(validator.status)}>{getStatusText(validator.status)}</Badge>
+                    </div>
+                    <CardDescription>
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        {validator.location}
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {validator.websites && validator.websites.length > 0 ? (
+                      <div className="space-y-4">
+                        {validator.websites.map((website) => {
+                          // Find the full website object from our websites array
+                          const fullWebsite =
+                            availableWebsites.find((w) => w.id === website.id) ||
+                            websites.find((w) => w.id === website.id)
+                          if (!fullWebsite) return null
+
+                          return (
+                            <div key={website.id} className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex items-center">
+                                <Globe className="h-5 w-5 mr-3 text-primary" />
+                                <div>
+                                  <div className="flex items-center">
+                                    <h4 className="font-medium">{fullWebsite.url}</h4>
+                                    {fullWebsite.ownership === "public" && (
+                                      <Badge className="ml-2 bg-purple-500">Public</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {fullWebsite.description || "No description"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Badge className={getStatusColor(fullWebsite.status)}>
+                                  {getStatusText(fullWebsite.status)}
+                                </Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedValidator(validator)
+                                    setSelectedWebsite(fullWebsite)
+                                    handlePingWebsite(validator.id, fullWebsite.id)
+                                  }}
+                                  disabled={isPinging}
+                                >
+                                  {isPinging && selectedWebsite?.id === fullWebsite.id ? (
+                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <Wifi className="h-4 w-4 mr-2" />
+                                  )}
+                                  Ping
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-6 text-center">
+                        <AlertTriangle className="h-8 w-8 text-yellow-500 mb-2" />
+                        <h4 className="text-lg font-medium mb-1">No Websites Assigned</h4>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          This validator doesn't have any websites assigned to it yet.
+                        </p>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedValidator(validator)}>
+                          Assign Websites
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="public-websites">
+          {isLoading ? (
+            <div className="flex justify-center p-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Public Websites</CardTitle>
+                  <CardDescription>These websites are publicly available for all validators to monitor</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold gradient-text">{validatorStats.totalPings}</div>
-                  <p className="text-xs text-muted-foreground">{validatorStats.successfulPings} successful</p>
+                  {availableWebsites.filter((w) => w.ownership === "public").length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-6 text-center">
+                      <Globe className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-xl font-semibold mb-2">No Public Websites</h3>
+                      <p className="text-muted-foreground text-center mb-4">
+                        There are no public websites available for monitoring yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {availableWebsites
+                        .filter((website) => website.ownership === "public")
+                        .map((website) => (
+                          <div key={website.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center">
+                              <Globe className="h-5 w-5 mr-3 text-purple-500" />
+                              <div>
+                                <div className="flex items-center">
+                                  <h4 className="font-medium">{website.url}</h4>
+                                  <Badge className="ml-2 bg-purple-500">Public</Badge>
+                                </div>
+                                <div className="flex items-center text-sm text-muted-foreground">
+                                  <User className="h-3 w-3 mr-1" />
+                                  {website.owner ? website.owner.username : "Unknown User"}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Badge className={getStatusColor(website.status)}>{getStatusText(website.status)}</Badge>
+                              {validators.length > 0 && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      <Wifi className="h-4 w-4 mr-2" />
+                                      Ping
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Select Validator</DialogTitle>
+                                      <DialogDescription>
+                                        Choose which validator to use for pinging this website
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="py-4 space-y-4">
+                                      {validators.map((validator) => (
+                                        <div
+                                          key={validator.id}
+                                          className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted"
+                                          onClick={() => {
+                                            handlePingWebsite(validator.id, website.id)
+                                            document
+                                              .querySelector('[role="dialog"]')
+                                              .querySelector('button[aria-label="Close"]')
+                                              .click()
+                                          }}
+                                        >
+                                          <div className="flex items-center">
+                                            <Server className="h-5 w-5 mr-3 text-primary" />
+                                            <div>
+                                              <h4 className="font-medium">{validator.name}</h4>
+                                              <p className="text-sm text-muted-foreground">{validator.location}</p>
+                                            </div>
+                                          </div>
+                                          <Badge className={getStatusColor(validator.status)}>
+                                            {getStatusText(validator.status)}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </CardContent>
-              </AnimatedCard>
-            </motion.div>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
-            <motion.div variants={itemVariants}>
-              <AnimatedCard>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold gradient-text">
-                    {validatorStats.totalPings > 0
-                      ? Math.round((validatorStats.successfulPings / validatorStats.totalPings) * 100)
-                      : 0}
-                    %
+      {/* Ping Results Dialog */}
+      {pingResults && (
+        <Dialog open={!!pingResults} onOpenChange={() => setPingResults(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ping Results</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="flex justify-center">
+                {pingResults.success ? (
+                  <div className="rounded-full bg-green-100 p-3">
+                    <Check className="h-6 w-6 text-green-600" />
                   </div>
-                  <p className="text-xs text-muted-foreground">Overall success rate</p>
-                </CardContent>
-              </AnimatedCard>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <AnimatedCard>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Rewards</CardTitle>
-                  <Coins className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold gradient-text">{validatorStats.totalRewards} coins</div>
-                  <p className="text-xs text-muted-foreground">Earned from validations</p>
-                </CardContent>
-              </AnimatedCard>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <AnimatedCard>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Validator Level</CardTitle>
-                  <Shield className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold gradient-text">Level {validatorStats.level}</div>
-                  <div className="mt-2">
-                    <Progress value={validatorStats.progress} className="h-2" />
+                ) : (
+                  <div className="rounded-full bg-red-100 p-3">
+                    <X className="h-6 w-6 text-red-600" />
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {validatorStats.progress}% to Level {validatorStats.level + 1}
-                  </p>
-                </CardContent>
-              </AnimatedCard>
-            </motion.div>
-          </motion.div>
-
-          <motion.div variants={itemVariants}>
-            <Tabs defaultValue="available">
-              <div className="flex items-center justify-between">
-                <TabsList>
-                  <TabsTrigger value="available">Available to Validate</TabsTrigger>
-                  <TabsTrigger value="recent">Recently Validated</TabsTrigger>
-                </TabsList>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="animate-in-button group"
-                  onClick={refreshData}
-                  disabled={isRefreshing}
-                >
-                  <RefreshCw
-                    className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : "group-hover:animate-spin-slow"}`}
-                  />
-                  {isRefreshing ? "Refreshing..." : "Refresh List"}
-                </Button>
+                )}
               </div>
 
-              <TabsContent value="available" className="mt-6">
-                <motion.div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" variants={containerVariants}>
-                  {websitesToValidate.length > 0 ? (
-                    websitesToValidate.map((website) => (
-                      <motion.div key={website.id} variants={itemVariants}>
-                        <AnimatedCard>
-                          <CardHeader>
-                            <CardTitle className="line-clamp-1 gradient-text">{website.url}</CardTitle>
-                            <CardDescription>Last validated: {website.lastValidated}</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="flex items-center justify-between">
-                              <Badge
-                                variant={
-                                  website.status === "online"
-                                    ? "success"
-                                    : website.status === "offline"
-                                      ? "destructive"
-                                      : "outline"
-                                }
-                                className="flex items-center gap-1"
-                              >
-                                {website.status === "online"
-                                  ? "Online"
-                                  : website.status === "offline"
-                                    ? "Offline"
-                                    : "Unknown"}
-                              </Badge>
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <Coins className="h-3 w-3" />
-                                {website.reward} coins
-                              </Badge>
-                            </div>
-                          </CardContent>
-                          <CardFooter>
-                            <Button
-                              className="w-full animate-in-button"
-                              onClick={() => pingWebsite(website.id)}
-                              disabled={!activeValidator}
-                            >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Ping Website
-                            </Button>
-                          </CardFooter>
-                        </AnimatedCard>
-                      </motion.div>
-                    ))
-                  ) : (
-                    <div className="col-span-full">
-                      <Alert>
-                        <AlertTitle>No Websites Found</AlertTitle>
-                        <AlertDescription>
-                          There are no websites available to validate. Add websites to your account to start validating.
-                        </AlertDescription>
-                      </Alert>
-                    </div>
-                  )}
-                </motion.div>
-              </TabsContent>
+              <div className="text-center">
+                <h3 className="text-lg font-medium mb-1">
+                  {pingResults.success ? "Website is Online" : "Website is Offline"}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {pingResults.success ? `Response time: ${pingResults.latency}ms` : "The website could not be reached"}
+                </p>
+              </div>
 
-              <TabsContent value="recent" className="mt-6">
-                <motion.div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" variants={containerVariants}>
-                  {validatedWebsites.length > 0 ? (
-                    validatedWebsites.map((website) => (
-                      <motion.div key={website.id} variants={itemVariants}>
-                        <AnimatedCard>
-                          <CardHeader>
-                            <CardTitle className="line-clamp-1 gradient-text">{website.url}</CardTitle>
-                            <CardDescription>Last validated: {website.lastValidated}</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="flex items-center justify-between">
-                              <Badge
-                                variant={
-                                  website.status === "online"
-                                    ? "success"
-                                    : website.status === "offline"
-                                      ? "destructive"
-                                      : "outline"
-                                }
-                                className="flex items-center gap-1"
-                              >
-                                {website.status === "online"
-                                  ? "Online"
-                                  : website.status === "offline"
-                                    ? "Offline"
-                                    : "Unknown"}
-                              </Badge>
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <Coins className="h-3 w-3" />
-                                {website.reward} coins
-                              </Badge>
-                            </div>
-                          </CardContent>
-                          <CardFooter>
-                            <Button
-                              className="w-full animate-in-button"
-                              variant="outline"
-                              onClick={() => pingWebsite(website.id)}
-                              disabled={!activeValidator}
-                            >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Ping Again
-                            </Button>
-                          </CardFooter>
-                        </AnimatedCard>
-                      </motion.div>
-                    ))
+              <Separator />
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Status:</span>
+                  <span className={pingResults.success ? "text-green-600" : "text-red-600"}>{pingResults.status}</span>
+                </div>
+
+                {pingResults.success && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Latency:</span>
+                    <span>{pingResults.latency}ms</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Timestamp:</span>
+                  <span>{new Date(pingResults.timestamp).toLocaleString()}</span>
+                </div>
+
+                {pingResults.success && pingResults.reward > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Reward:</span>
+                    <span className="text-yellow-600">{pingResults.reward} coins</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setPingResults(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Manage Validator Dialog */}
+      {selectedValidator && (
+        <Dialog open={!!selectedValidator} onOpenChange={(open) => !open && setSelectedValidator(null)}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Manage Validator: {selectedValidator.name}</DialogTitle>
+              <DialogDescription>Assign websites to this validator or update its information.</DialogDescription>
+            </DialogHeader>
+            <Tabs defaultValue="websites" className="mt-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="websites">Websites</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+              </TabsList>
+              <TabsContent value="websites" className="py-4">
+                <div className="space-y-4">
+                  <h4 className="font-medium">Assigned Websites</h4>
+                  {availableWebsites.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No websites available. Add websites first.</p>
                   ) : (
-                    <div className="col-span-full">
-                      <Alert>
-                        <AlertTitle>No Recent Validations</AlertTitle>
-                        <AlertDescription>
-                          You haven't validated any websites recently. Go to the "Available to Validate" tab to start
-                          validating.
-                        </AlertDescription>
-                      </Alert>
+                    <div className="max-h-[300px] overflow-y-auto space-y-2">
+                      {availableWebsites.map((website) => {
+                        const isAssigned =
+                          selectedValidator.websites && selectedValidator.websites.some((w) => w.id === website.id)
+
+                        return (
+                          <div key={website.id} className="flex items-center justify-between p-2 border rounded">
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                id={`manage-website-${website.id}`}
+                                checked={isAssigned}
+                                onChange={async () => {
+                                  try {
+                                    if (isAssigned) {
+                                      // Remove website
+                                      await api.validatorAPI.delete(`/${selectedValidator.id}/websites/${website.id}`)
+                                    } else {
+                                      // Assign website
+                                      await api.validatorAPI.post(`/${selectedValidator.id}/websites`, {
+                                        website_id: website.id,
+                                      })
+                                    }
+                                    // Refresh validators
+                                    await fetchValidators()
+                                    toast({
+                                      title: "Success",
+                                      description: isAssigned
+                                        ? "Website removed from validator."
+                                        : "Website assigned to validator.",
+                                      variant: "default",
+                                    })
+                                  } catch (error) {
+                                    console.error("Error updating validator websites:", error)
+                                    toast({
+                                      title: "Error",
+                                      description: "Failed to update validator websites.",
+                                      variant: "destructive",
+                                    })
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-primary focus:ring-primary mr-3"
+                              />
+                              <div>
+                                <label
+                                  htmlFor={`manage-website-${website.id}`}
+                                  className="text-sm cursor-pointer flex items-center"
+                                >
+                                  {website.url}
+                                  {website.ownership === "public" && (
+                                    <Badge className="ml-2 bg-purple-500">Public</Badge>
+                                  )}
+                                </label>
+                                {website.ownership === "public" && website.owner && (
+                                  <div className="text-xs text-muted-foreground flex items-center">
+                                    <User className="h-3 w-3 mr-1" />
+                                    {website.owner.username}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Badge className={getStatusColor(website.status)}>{getStatusText(website.status)}</Badge>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
-                </motion.div>
+                </div>
+              </TabsContent>
+              <TabsContent value="settings" className="py-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-name" className="text-right">
+                      Name
+                    </Label>
+                    <Input id="edit-name" defaultValue={selectedValidator.name} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-location" className="text-right">
+                      Location
+                    </Label>
+                    <Input id="edit-location" defaultValue={selectedValidator.location} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-ip" className="text-right">
+                      IP Address
+                    </Label>
+                    <Input id="edit-ip" defaultValue={selectedValidator.ip} className="col-span-3" />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button>Save Changes</Button>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
-          </motion.div>
-        </>
+          </DialogContent>
+        </Dialog>
       )}
-    </motion.div>
+    </div>
   )
 }
+
+export default ValidatorsPage

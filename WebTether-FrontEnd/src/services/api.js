@@ -112,13 +112,14 @@ export const websiteAPI = {
   deleteWebsite: (id) => api.delete(`/websites/${id}`),
   getWebsiteStats: () => api.get("/websites/stats"),
   pingWebsite: (id) => api.post(`/websites/${id}/ping`),
+  togglePublicStatus: (id) => api.post(`/websites/${id}/toggle-public`),
 }
 
 // Validator related API calls
 export const validatorAPI = {
   getAllValidators: () => api.get("/validators"),
   getValidatorById: (id) => api.get(`/validators/${id}`),
-  createValidator: (validatorData) => api.post("/validators/", validatorData),
+  createValidator: (validatorData) => api.post("/validators", validatorData),
   updateValidator: (id, validatorData) => api.put(`/validators/${id}`, validatorData),
   deleteValidator: (id) => api.delete(`/validators/${id}`),
   getValidatorStats: () => api.get("/validators/stats"),
@@ -133,6 +134,7 @@ export const validatorAPI = {
   post: (endpoint, data) => api.post(`/validators${endpoint}`, data),
   put: (endpoint, data) => api.put(`/validators${endpoint}`, data),
   delete: (endpoint) => api.delete(`/validators${endpoint}`),
+  getAvailableWebsites: () => api.get("/validators/available-websites"),
 }
 
 // Report related API calls
@@ -165,7 +167,7 @@ export const getValidators = async () => {
 
 export const createValidator = async (validatorData) => {
   try {
-    const response = await api.post("/validators/", validatorData)
+    const response = await api.post("/validators", validatorData)
     return response.data
   } catch (error) {
     console.error("API Response Error:", error.response || error)

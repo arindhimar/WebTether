@@ -441,15 +441,17 @@ def ping_website(validator_id, website_id=None):
             if not website_id:
                 return jsonify({"error": "Website ID is required"}), 400
         
-        # Check if website exists and belongs to the user
-        website = Website.query.filter_by(id=website_id, user_id=user_id).first()
+        # Check if website exists (without user_id filter)
+        website = Website.query.filter_by(id=website_id).first()
         
         if not website:
-            return jsonify({"error": "Website not found or does not belong to the user"}), 404
+            return jsonify({"error": "Website not found"}), 404
         
-        # Check if website is assigned to the validator
-        if website not in validator.websites:
-            return jsonify({"error": "Website is not assigned to this validator"}), 400
+        # Check if website is assigned to the validator or is public
+        if website not in validator.websites and website.user_id != user_id:
+            # Allow pinging if the website is public
+            if not hasattr(website, 'is_public') or not website.is_public:
+                return jsonify({"error": "You don't have permission to ping this website"}), 403
         
         # Simulate pinging the website
         # In a real implementation, this would make an actual HTTP request to the website
@@ -599,4 +601,60 @@ def get_enhanced_validator_stats():
     
     except Exception as e:
         logger.error(f"Error getting enhanced validator stats: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+def get_all_websites_for_validator():
+    try:
+        # Get Clerk user_id from request headers
+        clerk_user_id = request.headers.get('X-Clerk-User-Id')
+        
+        if not clerk_user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        # Get internal user ID
+        user_id = get_internal_user_id(clerk_user_id)
+        if not user_id:
+            return jsonify({"error": "User not found"}), 404
+        
+        # Get all websites owned by the user
+        owned_websites = Website.query.filter_by(user_id=user_id).all()
+        
+        # Get all public websites not owned by the user
+        public_websites = Website.query.filter(
+            Website.is_public == True,
+            Website.user_id != user_id
+        ).all()
+        
+        # Combine and convert to list of dictionaries
+        all_websites = []
+        
+        for website in owned_websites:
+            website_dict = website.to_dict()
+            website_dict['ownership'] = 'owned'
+            
+            # Add owner information
+            website_dict['owner'] = {
+                'id': user_id,
+                'username': User.query.get(user_id).username if User.query.get(user_id) else 'Unknown'
+            }
+            
+            all_websites.append(website_dict)
+        
+        for website in public_websites:
+            website_dict = website.to_dict()
+            website_dict['ownership'] = 'public'
+            
+            # Add owner information
+            owner = User.query.get(website.user_id)
+            website_dict['owner'] = {
+                'id': website.user_id,
+                'username': owner.username if owner else 'Unknown'
+            }
+            
+            all_websites.append(website_dict)
+        
+        return jsonify(all_websites), 200
+    
+    except Exception as e:
+        logger.error(f"Error getting websites for validator: {str(e)}")
         return jsonify({"error": str(e)}), 500

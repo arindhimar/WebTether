@@ -9,7 +9,8 @@ from controllers.validator_controller import (
     assign_website_to_validator,
     remove_website_from_validator,
     ping_website,
-    get_enhanced_validator_stats
+    get_enhanced_validator_stats,
+    get_all_websites_for_validator
 )
 from middleware.auth_middleware import auth_required
 
@@ -80,3 +81,9 @@ def ping_website_with_validator(validator_id):
 @auth_required
 def ping_specific_website(validator_id, website_id):
     return ping_website(validator_id, website_id)
+
+# Get all websites available for validators (owned + public)
+@validator_bp.route('/available-websites', methods=['GET'])
+@auth_required
+def get_available_websites():
+    return get_all_websites_for_validator()
