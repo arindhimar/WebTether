@@ -1,178 +1,171 @@
-import axios from "axios"
+const API_BASE_URL = "http://127.0.0.1:5000"
 
-// Create API instance with environment variable or fallback URL
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
-  headers: {
+// Helper function to get auth token
+const getAuthToken = () => {
+  return localStorage.getItem("web-tether-token")
+}
+
+// Helper function to make authenticated requests
+const makeRequest = async (url, options = {}) => {
+  const token = getAuthToken()
+  const headers = {
     "Content-Type": "application/json",
-  },
-})
+    ...options.headers,
+  }
 
-// Track ongoing requests to prevent duplicates
-const pendingRequests = new Map()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
 
-// Request interceptor for authentication and request tracking
-api.interceptors.request.use(
-  async (config) => {
-    // Create a request key based on method and URL
-    const requestKey = `${config.method}:${config.url}`
+  const response = await fetch(`${API_BASE_URL}${url}`, {
+    ...options,
+    headers,
+  })
 
-    // Log the request for debugging
-    console.log(`API Request: ${requestKey}`)
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
 
-    // If there's already a pending request with this key, cancel this one
-    if (pendingRequests.has(requestKey)) {
-      console.log(`Duplicate request canceled: ${requestKey}`)
-      return {
-        ...config,
-        cancelToken: new axios.CancelToken((cancel) => cancel("Duplicate request canceled")),
-      }
-    }
-
-    // Add this request to pending
-    pendingRequests.set(requestKey, true)
-
-    // Get the clerk user ID and token from localStorage
-    const clerkUserId = localStorage.getItem("clerk-user-id") || ""
-    const clerkToken = localStorage.getItem("clerk-token") || ""
-
-    // Add clerk user ID to headers if available
-    if (clerkUserId) {
-      config.headers["X-Clerk-User-Id"] = clerkUserId
-    }
-
-    // Add authorization token if available
-    if (clerkToken) {
-      config.headers["Authorization"] = `Bearer ${clerkToken}`
-    }
-
-    return config
-  },
-  (error) => {
-    console.error("API Request Error:", error)
-    return Promise.reject(error)
-  },
-)
-
-// Response interceptor for error handling and cleanup
-api.interceptors.response.use(
-  (response) => {
-    // Remove from pending requests
-    const requestKey = `${response.config.method}:${response.config.url}`
-    pendingRequests.delete(requestKey)
-
-    return response
-  },
-  (error) => {
-    // Log the error for debugging
-    console.error("API Response Error:", error.response || error)
-
-    // If request was canceled due to our duplicate detection, just return a resolved promise
-    if (axios.isCancel(error)) {
-      return Promise.resolve({ data: null, status: "canceled" })
-    }
-
-    // Remove from pending requests
-    if (error.config) {
-      const requestKey = `${error.config.method}:${error.config.url}`
-      pendingRequests.delete(requestKey)
-    }
-
-    // Handle 401 Unauthorized errors - redirect to login
-    if (error.response && error.response.status === 401) {
-      // Clear auth data
-      localStorage.removeItem("clerk-user-id")
-      localStorage.removeItem("clerk-token")
-
-      // Redirect to login page if not already there
-      if (!window.location.pathname.includes("/sign-in") && !window.location.pathname.includes("/sign-up")) {
-        window.location.href = "/sign-in"
-      }
-    }
-
-    return Promise.reject(error)
-  },
-)
-
-// User related API calls
-export const userAPI = {
-  createUser: (userData) => api.post("/users", userData),
-  getUserByClerkId: (clerkId) => api.get(`/users/clerk/${clerkId}`),
-  updateUser: (userId, userData) => api.put(`/users/${userId}`, userData),
-  deleteUser: (userId) => api.delete(`/users/${userId}`),
-  getUserProfile: () => api.get("/users/profile"),
+  return response.json()
 }
 
-// Website related API calls
+// Auth API
+export const authAPI = {
+  login: async (email, password) => {
+    return makeRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    })
+  },
+
+  signup: async (userData) => {
+    return makeRequest("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(userData),
+    })
+  },
+}
+
+// Website API
 export const websiteAPI = {
-  getAllWebsites: () => api.get("/websites"),
-  getWebsiteById: (id) => api.get(`/websites/${id}`),
-  createWebsite: (websiteData) => api.post("/websites", websiteData),
-  updateWebsite: (id, websiteData) => api.put(`/websites/${id}`, websiteData),
-  deleteWebsite: (id) => api.delete(`/websites/${id}`),
-  getWebsiteStats: () => api.get("/websites/stats"),
-  pingWebsite: (id) => api.post(`/websites/${id}/ping`),
-  togglePublicStatus: (id) => api.post(`/websites/${id}/toggle-public`),
+  createWebsite: async (url, uid, category = null) => {
+    return makeRequest("/websites/website", {
+      method: "POST",
+      body: JSON.stringify({ url, uid, category, status: "active" }),
+    })
+  },
+
+  getAllWebsites: async () => {
+    return makeRequest("/websites/website")
+  },
+
+  getWebsiteById: async (wid) => {
+    return makeRequest(`/websites/website/${wid}`)
+  },
+
+  updateWebsite: async (wid, data) => {
+    return makeRequest(`/websites/website/${wid}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  },
+
+  deleteWebsite: async (wid) => {
+    return makeRequest(`/websites/website/${wid}`, {
+      method: "DELETE",
+    })
+  },
 }
 
-// Validator related API calls
-export const validatorAPI = {
-  getAllValidators: () => api.get("/validators"),
-  getValidatorById: (id) => api.get(`/validators/${id}`),
-  createValidator: (validatorData) => api.post("/validators", validatorData),
-  updateValidator: (id, validatorData) => api.put(`/validators/${id}`, validatorData),
-  deleteValidator: (id) => api.delete(`/validators/${id}`),
-  getValidatorStats: () => api.get("/validators/stats"),
-  assignWebsite: (validatorId, websiteId) => api.post(`/validators/${validatorId}/websites`, { website_id: websiteId }),
-  removeWebsite: (validatorId, websiteId) => api.delete(`/validators/${validatorId}/websites/${websiteId}`),
-  validateWebsite: (validatorId, websiteId) => api.post(`/validators/${validatorId}/validate/${websiteId}`),
-  // New methods for enhanced validator functionality
-  pingWebsite: (validatorId, websiteId) => api.post(`/validators/${validatorId}/ping`, { website_id: websiteId }),
-  getEnhancedStats: () => api.get("/validators/enhanced-stats"),
-  // Generic methods for custom endpoints
-  get: (endpoint) => api.get(`/validators${endpoint}`),
-  post: (endpoint, data) => api.post(`/validators${endpoint}`, data),
-  put: (endpoint, data) => api.put(`/validators${endpoint}`, data),
-  delete: (endpoint) => api.delete(`/validators${endpoint}`),
-  getAvailableWebsites: () => api.get("/validators/available-websites"),
+// Ping API
+export const pingAPI = {
+  createPing: async (wid, is_up, latency_ms = null, region = null, uid = null) => {
+    return makeRequest("/pings/ping", {
+      method: "POST",
+      body: JSON.stringify({ wid, is_up, latency_ms, region, uid }),
+    })
+  },
+
+  getAllPings: async () => {
+    return makeRequest("/pings/ping")
+  },
+
+  getPingById: async (pid) => {
+    return makeRequest(`/pings/ping/${pid}`)
+  },
+
+  updatePing: async (pid, data) => {
+    return makeRequest(`/pings/ping/${pid}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  },
+
+  deletePing: async (pid) => {
+    return makeRequest(`/pings/ping/${pid}`, {
+      method: "DELETE",
+    })
+  },
 }
 
-// Report related API calls
+// User API
+export const userAPI = {
+  createUser: async (name, isVisitor = false, secret_key = null) => {
+    return makeRequest("/users/users", {
+      method: "POST",
+      body: JSON.stringify({ name, isVisitor, secret_key }),
+    })
+  },
+
+  getAllUsers: async () => {
+    return makeRequest("/users/users")
+  },
+
+  getUserById: async (userId) => {
+    return makeRequest(`/users/users/${userId}`)
+  },
+
+  updateUser: async (userId, data) => {
+    return makeRequest(`/users/users/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  },
+
+  deleteUser: async (userId) => {
+    return makeRequest(`/users/users/${userId}`, {
+      method: "DELETE",
+    })
+  },
+}
+
+// Report API
 export const reportAPI = {
-  getAllReports: () => api.get("/reports"),
-  getReportById: (id) => api.get(`/reports/${id}`),
-  createReport: (reportData) => api.post("/reports", reportData),
-  updateReport: (id, reportData) => api.put(`/reports/${id}`, reportData),
-  deleteReport: (id) => api.delete(`/reports/${id}`),
-  getReportStats: () => api.get("/reports/stats"),
-}
+  createReport: async (pid, reason, uid = null) => {
+    return makeRequest("/reports/report", {
+      method: "POST",
+      body: JSON.stringify({ pid, reason, uid }),
+    })
+  },
 
-// Settings related API calls
-export const settingsAPI = {
-  getSettings: () => api.get("/settings"),
-  updateSettings: (settingsData) => api.put("/settings", settingsData),
-  updateNotificationSettings: (notificationSettings) => api.put("/settings/notifications", notificationSettings),
-  updateSecuritySettings: (securitySettings) => api.put("/settings/security", securitySettings),
-}
+  getAllReports: async () => {
+    return makeRequest("/reports/report")
+  },
 
-export const getValidators = async () => {
-  try {
-    const response = await api.get("/validators")
-    return response.data
-  } catch (error) {
-    console.error("API Response Error:", error.response || error)
-    throw error
-  }
-}
+  getReportById: async (rid) => {
+    return makeRequest(`/reports/report/${rid}`)
+  },
 
-export const createValidator = async (validatorData) => {
-  try {
-    const response = await api.post("/validators", validatorData)
-    return response.data
-  } catch (error) {
-    console.error("API Response Error:", error.response || error)
-    throw error
-  }
-}
+  updateReport: async (rid, data) => {
+    return makeRequest(`/reports/report/${rid}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  },
 
-export default api
+  deleteReport: async (rid) => {
+    return makeRequest(`/reports/report/${rid}`, {
+      method: "DELETE",
+    })
+  },
+}

@@ -1,80 +1,82 @@
-from flask import request, jsonify, current_app
-from models.db import db
-from models.user_model import User
+from flask import Blueprint, request, jsonify
+from models.auth_model import AuthModel
+from models.user_model import UserModel
+from utils.jwt_utils import generate_token
+auth_controller = Blueprint("auth_controller", __name__)
+auth_model = AuthModel()
+user_model = UserModel()
 
-class AuthController:
-    @staticmethod
-    def handle_webhook():
-        """Handle Clerk webhook events"""
-        try:
-            data = request.get_json()
-            
-            # Verify webhook signature (in production)
-            # This is a simplified version
-            
-            event_type = data.get('type')
-            
-            if event_type == 'user.created':
-                # Handle user creation
-                user_data = data.get('data', {})
-                clerk_id = user_data.get('id')
-                email = user_data.get('email_addresses', [{}])[0].get('email_address')
-                first_name = user_data.get('first_name')
-                last_name = user_data.get('last_name')
-                
-                # Check if user already exists
-                existing_user = User.query.filter_by(email=email).first()
-                if existing_user:
-                    existing_user.clerk_id = clerk_id
-                    existing_user.first_name = first_name
-                    existing_user.last_name = last_name
-                    db.session.commit()
-                else:
-                    new_user = User(
-                        clerk_id=clerk_id,
-                        email=email,
-                        first_name=first_name,
-                        last_name=last_name,
-                        auth_provider='clerk'
-                    )
-                    db.session.add(new_user)
-                    db.session.commit()
-                    
-            return jsonify({"status": "success"}), 200
-        except Exception as e:
-            current_app.logger.error(f"Error handling webhook: {str(e)}")
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
-    
-    @staticmethod
-    def verify_token():
-        """Verify Clerk JWT token and return user info"""
-        try:
-            auth_header = request.headers.get('Authorization')
-            
-            if not auth_header or not auth_header.startswith('Bearer '):
-                return jsonify({"error": "No token provided"}), 401
-            
-            token = auth_header.split(' ')[1]
-            
-            # In a real app, you would verify the JWT token with Clerk's API
-            # This is a simplified version
-            
-            # For now, we'll just check if the user exists in our database
-            clerk_user_id = request.json.get('clerk_user_id')
-            if not clerk_user_id:
-                return jsonify({"error": "No user ID provided"}), 400
-                
-            user = User.query.filter_by(clerk_id=clerk_user_id).first()
-            
-            if not user:
-                return jsonify({"error": "User not found"}), 404
-                
-            return jsonify({
-                "status": "success",
-                "user": user.to_dict()
-            }), 200
-        except Exception as e:
-            current_app.logger.error(f"Error verifying token: {str(e)}")
-            return jsonify({"error": str(e)}), 401
+@auth_controller.route('/signup', methods=['POST'])
+def signup():
+    data = request.json
+    user_row = user_model.create_user(
+        data["name"],
+        data.get("isVisitor", False),
+        data.get("secret_key")
+    ).data[0]
 
+    auth_row = auth_model.create_auth(
+        data["email"],
+        data["password"],
+        user_row["id"]
+    ).data[0]
+
+    session_token = generate_token({"user_id": user_row["id"]})
+
+    response = {
+        "user": {
+            "id":           user_row["id"],
+            "name":         user_row["name"],
+            "isVisitor":    user_row["isVisitor"]
+        },
+        "session": {
+            "token":      session_token,
+            "expires_in": 24 * 3600
+        }
+    }
+    return jsonify(response), 201
+
+
+@auth_controller.route('/login', methods=['POST'])
+def login():
+    data   = request.json
+    email  = data.get("email")
+    pw     = data.get("password")
+
+    auth_res = auth_model.sign_in(email, pw)
+    if auth_res.get("status") != "success":
+        return jsonify({"error": auth_res.get("reason", "Invalid credentials")}), 401
+
+    user_row = user_model.get_user_by_id(auth_res["user"]["user_id"]).data
+
+    session_token = generate_token({
+        "user_id": user_row["id"],
+        "email":    email     
+    })
+
+    return jsonify({
+        "user": {
+            "id":        user_row["id"],
+            "name":      user_row["name"],
+            "isVisitor": user_row["isVisitor"]
+        },
+        "token": session_token
+    }), 200
+
+@auth_controller.route('/auth', methods=['GET'])
+def list_auths():
+    return jsonify(auth_model.get_all_auths().data), 200
+
+@auth_controller.route('/auth/<int:auth_id>', methods=['GET'])
+def get_auth(auth_id):
+    return jsonify(auth_model.get_auth_by_id(auth_id).data), 200
+
+@auth_controller.route('/auth/<int:auth_id>', methods=['PUT'])
+def update_auth(auth_id):
+    data = request.json
+    return jsonify(auth_model.update_auth(auth_id, data).data), 200
+
+@auth_controller.route('/auth/<int:auth_id>', methods=['DELETE'])
+def delete_auth(auth_id):
+    auth_model.delete_auth(auth_id)
+    return jsonify({"message": "Deleted"}), 200

@@ -1,39 +1,27 @@
-from datetime import datetime
-import uuid
-from models.db import db
+from supabase import create_client
+import os
+from dotenv import load_dotenv
 
-class User(db.Model):
-    __tablename__ = 'users'
+load_dotenv()
 
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    clerk_id = db.Column(db.String(255), unique=True, nullable=True)
-    username = db.Column(db.String(255), nullable=True)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    password_hash = db.Column(db.Text, nullable=True)
-    auth_provider = db.Column(db.String(50), nullable=True)
-    first_name = db.Column(db.String(255), nullable=True)
-    last_name = db.Column(db.String(255), nullable=True)
-    image_url = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
-    updated_at = db.Column(db.TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-    # Define relationship with websites
-    websites = db.relationship('Website', backref='user', lazy=True, cascade="all, delete-orphan")
+class UserModel:
+    def __init__(self):
+        self.supabase = supabase
 
-    def __repr__(self):
-        return f'<User {self.email}>'
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'clerk_id': self.clerk_id,
-            'username': self.username,
-            'email': self.email,
-            'auth_provider': self.auth_provider,
-            'first_name': self.first_name,
-            'last_name': self.last_name,
-            'image_url': self.image_url,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        }
+    def create_user(self, name, is_visitor=False, secret_key=None):
+        data = {"name": name, "isVisitor": is_visitor, "secret_key": secret_key}
+        return self.supabase.table("users").insert(data).execute()
 
+    def get_all_users(self):
+        return self.supabase.table("users").select("*").execute()
+
+    def get_user_by_id(self, user_id):
+        return self.supabase.table("users").select("*").eq("id", user_id).single().execute()
+
+    def update_user(self, user_id, data):
+        return self.supabase.table("users").update(data).eq("id", user_id).execute()
+
+    def delete_user(self, user_id):
+        return self.supabase.table("users").delete().eq("id", user_id).execute()

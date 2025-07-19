@@ -1,94 +1,39 @@
 "use client"
 
-import { Routes, Route, Navigate } from "react-router-dom"
-import { useAuth } from "@clerk/clerk-react"
-import { useBackendAuthContext } from "./context/backend-auth-context"
+import { useState } from "react"
+import { ThemeProvider } from "./contexts/ThemeContext"
+import { AuthProvider } from "./contexts/AuthContext"
+import { Toaster } from "./components/ui/sonner"
+import WebTetherLanding from "./pages/WebTetherLanding"
+import Dashboard from "./pages/Dashboard"
+import "./styles/globals.css"
 
-// Layouts
-import DashboardLayout from "./layouts/DashboardLayout"
+function App() {
+  const [currentPage, setCurrentPage] = useState(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
 
-// Pages
-import HomePage from "./pages/HomePage"
-import SignInPage from "./pages/auth/SignInPage"
-import SignUpPage from "./pages/auth/SignUpPage"
-import DashboardPage from "./pages/dashboard/DashboardPage"
-import WebsitesPage from "./pages/dashboard/WebsitesPage"
-import ValidatorsPage from "./pages/dashboard/ValidatorsPage"
-import ReportsPage from "./pages/dashboard/ReportsPage"
-import ProfilePage from "./pages/dashboard/ProfilePage"
-import SettingsPage from "./pages/SettingsPage"
-
-// Protected route component
-const ProtectedRoute = ({ children }) => {
-  const { isSignedIn, isLoaded } = useAuth()
-  const { backendUser, isLoading } = useBackendAuthContext()
-
-  if (!isLoaded || isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-          <p className="text-lg font-medium">Loading...</p>
-        </div>
-      </div>
-    )
+  // Simple routing
+  const renderPage = () => {
+    switch (currentPage) {
+      case "dashboard":
+        return <Dashboard />
+      default:
+        return <WebTetherLanding />
+    }
   }
 
-  if (!isSignedIn) {
-    return <Navigate to="/sign-in" replace />
-  }
+  // Listen for navigation changes
+  window.addEventListener("popstate", () => {
+    setCurrentPage(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
+  })
 
-  // Check if user exists in backend
-  if (!backendUser) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-          <p className="text-lg font-medium">Setting up your account...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return children
-}
-
-export default function App() {
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<HomePage />} />
-      <Route path="/sign-in/*" element={<SignInPage />} />
-      <Route path="/sign-up/*" element={<SignUpPage />} />
-
-      {/* Protected routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<DashboardPage />} />
-        <Route path="websites" element={<WebsitesPage />} />
-        <Route path="validators" element={<ValidatorsPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="profile" element={<ProfilePage />} />
-      </Route>
-
-      {/* Settings page */}
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<SettingsPage />} />
-      </Route>
-    </Routes>
+    <ThemeProvider defaultTheme="dark" storageKey="web-tether-theme">
+      <AuthProvider>
+        {renderPage()}
+        <Toaster />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
+export default App
