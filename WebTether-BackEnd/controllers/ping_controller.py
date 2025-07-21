@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models.ping_model import PingModel
+from utils.selenium_checker import run_manual_site_check
 
 ping_controller = Blueprint("ping_controller", __name__)
 ping_model = PingModel()
@@ -36,3 +37,30 @@ def update_ping(pid):
 def delete_ping(pid):
     ping_model.delete_ping(pid)
     return jsonify({"message": "Deleted"}), 200
+
+@ping_controller.route('/ping/manual', methods=['POST'])
+def manual_ping():
+    data = request.json
+    url = data.get("url")
+    wid = data.get("wid")
+    uid = data.get("uid")
+    region = data.get("region")
+
+    if not url or not wid:
+        return jsonify({"error": "URL and WID are required"}), 400
+
+    result = run_manual_site_check(url)
+
+    ping_model.create_ping(
+        wid=wid,
+        is_up=result.get("is_up", False),
+        latency_ms=result.get("latency_ms"),
+        region=region,
+        uid=uid
+    )
+
+    return jsonify({
+        "status": "recorded",
+        "is_up": result.get("is_up", False),
+        "latency": result.get("latency_ms")
+    }), 200
