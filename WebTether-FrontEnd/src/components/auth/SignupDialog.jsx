@@ -60,6 +60,9 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
       password: formData.password,
       isVisitor: formData.isVisitor,
       secret_key: formData.secret_key || "web-tether-default-key",
+      // Don't include Replit agent data in initial signup
+      replit_agent_url: null,
+      replit_agent_token: null,
     }
 
     const result = await signup(signupData)
@@ -67,7 +70,7 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
     if (result.success) {
       toast({
         title: "Account Created!",
-        description: "Welcome to Web-Tether! You can now start monitoring websites.",
+        description: "Welcome to Web-Tether! Let's get you set up.",
       })
       onOpenChange(false)
       setFormData({
@@ -217,6 +220,15 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
               I want to be a validator (earn rewards for monitoring websites)
             </Label>
           </div>
+
+          {formData.isVisitor && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                🎉 Great choice! After creating your account, we'll help you set up your Replit agent to start earning
+                rewards.
+              </p>
+            </div>
+          )}
 
           <Button
             type="submit"

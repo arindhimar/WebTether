@@ -7,7 +7,14 @@ user_model = UserModel()
 @user_controller.route('/users', methods=['POST'])
 def create_user():
     data = request.json
-    return jsonify(user_model.create_user(data["name"], data.get("isVisitor", False), data.get("secret_key")).data), 201
+    result = user_model.create_user(
+        name=data["name"],
+        is_visitor=data.get("isVisitor", False),
+        secret_key=data.get("secret_key"),
+        replit_agent_url=data.get("replit_agent_url"),
+        replit_agent_token=data.get("replit_agent_token")
+    )
+    return jsonify(result.data), 201
 
 @user_controller.route('/users', methods=['GET'])
 def get_all_users():

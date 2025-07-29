@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
-import { CheckCircle, XCircle, Clock, TrendingUp, Coins } from "lucide-react"
+import { CheckCircle, XCircle, Clock, TrendingUp, Coins, Zap } from "lucide-react"
 
 export function ValidatorActivities({ pings, userId }) {
   const userPings = useMemo(() => {
@@ -16,12 +16,14 @@ export function ValidatorActivities({ pings, userId }) {
     const successfulPings = userPings.filter((ping) => ping.is_up)
     const successRate = userPings.length > 0 ? ((successfulPings.length / userPings.length) * 100).toFixed(1) : 0
     const coinsEarned = userPings.length * 5 // Assuming 5 coins per ping
+    const replitPings = userPings.filter((ping) => ping.replit_used)
 
     return {
       todayValidations: todayPings.length,
       successRate,
       coinsEarned,
       totalValidations: userPings.length,
+      replitUsage: userPings.length > 0 ? ((replitPings.length / userPings.length) * 100).toFixed(1) : 0,
     }
   }, [userPings])
 
@@ -38,6 +40,7 @@ export function ValidatorActivities({ pings, userId }) {
         timestamp: formatTimeAgo(ping.created_at),
         latency: ping.latency_ms,
         region: ping.region,
+        replitUsed: ping.replit_used,
       }))
   }, [userPings])
 
@@ -108,12 +111,12 @@ export function ValidatorActivities({ pings, userId }) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rank</CardTitle>
-            <div className="h-4 w-4 rounded-full bg-blue-500" />
+            <CardTitle className="text-sm font-medium">Replit Usage</CardTitle>
+            <Zap className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">#-</div>
-            <p className="text-xs text-muted-foreground">Coming soon</p>
+            <div className="text-2xl font-bold">{stats.replitUsage}%</div>
+            <p className="text-xs text-muted-foreground">Agent-powered pings</p>
           </CardContent>
         </Card>
       </div>
@@ -122,7 +125,7 @@ export function ValidatorActivities({ pings, userId }) {
       <Card>
         <CardHeader>
           <CardTitle>Recent Validation Activities</CardTitle>
-          <CardDescription>Your latest website validation results</CardDescription>
+          <CardDescription>Your latest website validation results using Replit agents</CardDescription>
         </CardHeader>
         <CardContent>
           {recentActivities.length === 0 ? (
@@ -138,7 +141,15 @@ export function ValidatorActivities({ pings, userId }) {
                   <div className="flex items-center space-x-4">
                     {getStatusIcon(activity.status, activity.result)}
                     <div>
-                      <h4 className="font-semibold">{activity.url}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold">{activity.url}</h4>
+                        {activity.replitUsed && (
+                          <Badge variant="outline" className="text-xs">
+                            <Zap className="h-3 w-3 mr-1" />
+                            Replit
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{activity.timestamp}</span>
                         {activity.latency && <span>• {activity.latency}ms</span>}

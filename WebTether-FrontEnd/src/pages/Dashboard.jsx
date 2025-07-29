@@ -10,6 +10,7 @@ import { WebsiteList } from "../components/dashboard/WebsiteList"
 import { UptimeChart } from "../components/dashboard/UptimeChart"
 import { ValidatorActivities } from "../components/dashboard/ValidatorActivities"
 import { PingQueue } from "../components/dashboard/PingQueue"
+import { UserSettings } from "../components/dashboard/UserSettings"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { useToast } from "../hooks/use-toast"
 
@@ -113,7 +114,7 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold">Welcome back, {user?.name}!</h1>
             <p className="text-muted-foreground">
               {user?.isVisitor
-                ? "Earn rewards by validating website uptime for the community."
+                ? "Earn rewards by validating website uptime for the community using your Replit agent."
                 : "Monitor your websites and track their uptime with our validator network."}
             </p>
           </div>
@@ -123,9 +124,10 @@ export default function Dashboard() {
 
           {/* Main Content Tabs */}
           <Tabs defaultValue={user?.isVisitor ? "validator" : "websites"} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="websites">My Websites</TabsTrigger>
               <TabsTrigger value="validator">{user?.isVisitor ? "Validator Dashboard" : "Available Pings"}</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="websites" className="space-y-6">
@@ -150,6 +152,10 @@ export default function Dashboard() {
               ) : (
                 <PingQueue pings={pings} websites={websites} userId={user.id} onPingAccepted={loadDashboardData} />
               )}
+            </TabsContent>
+
+            <TabsContent value="settings" className="space-y-6">
+              <UserSettings />
             </TabsContent>
           </Tabs>
         </motion.div>

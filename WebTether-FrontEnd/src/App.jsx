@@ -2,14 +2,21 @@
 
 import { useState } from "react"
 import { ThemeProvider } from "./contexts/ThemeContext"
-import { AuthProvider } from "./contexts/AuthContext"
+import { AuthProvider, useAuth } from "./contexts/AuthContext"
 import { Toaster } from "./components/ui/sonner"
+import { OnboardingFlow } from "./components/onboarding/OnboardingFlow"
 import WebTetherLanding from "./pages/WebTetherLanding"
 import Dashboard from "./pages/Dashboard"
 import "./styles/globals.css"
 
-function App() {
+function AppContent() {
   const [currentPage, setCurrentPage] = useState(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
+  const { user, showOnboarding, completeOnboarding } = useAuth()
+
+  // Show onboarding for new users
+  if (showOnboarding && user) {
+    return <OnboardingFlow onComplete={completeOnboarding} />
+  }
 
   // Simple routing
   const renderPage = () => {
@@ -26,10 +33,14 @@ function App() {
     setCurrentPage(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
   })
 
+  return renderPage()
+}
+
+function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="web-tether-theme">
       <AuthProvider>
-        {renderPage()}
+        <AppContent />
         <Toaster />
       </AuthProvider>
     </ThemeProvider>

@@ -41,26 +41,36 @@ def delete_ping(pid):
 @ping_controller.route('/ping/manual', methods=['POST'])
 def manual_ping():
     data = request.json
-    url = data.get("url")
-    wid = data.get("wid")
     uid = data.get("uid")
-    region = data.get("region")
+    wid = data.get("wid")
+    url = data.get("url")
 
-    if not url or not wid:
-        return jsonify({"error": "URL and WID are required"}), 400
+    if not uid or not wid or not url:
+        return jsonify({"error": "Missing uid, wid or url"}), 400
 
-    result = run_manual_site_check(url)
+    user = user_model.get_user_by_id(uid).data
+    agent_url = user.get("replit_agent_url")
+    agent_token = user.get("replit_agent_token")
 
-    ping_model.create_ping(
-        wid=wid,
-        is_up=result.get("is_up", False),
-        latency_ms=result.get("latency_ms"),
-        region=region,
-        uid=uid
-    )
+    if not agent_url or not agent_token:
+        return jsonify({"error": "User has not linked a Replit agent"}), 400
 
-    return jsonify({
-        "status": "recorded",
-        "is_up": result.get("is_up", False),
-        "latency": result.get("latency_ms")
-    }), 200
+    try:
+        response = requests.post(agent_url, json={"url": url}, headers={"Authorization": f"Bearer {agent_token}"})
+        result = response.json()
+
+        ping_model.create_ping(
+            wid=wid,
+            is_up=result.get("is_up", False),
+            latency_ms=result.get("latency_ms"),
+            region=result.get("region"),
+            uid=uid,
+            replit_used=True
+        )
+
+        return jsonify({
+            "status": "recorded",
+            "result": result
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

@@ -3,15 +3,20 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 class UserModel:
     def __init__(self):
         self.supabase = supabase
 
-    def create_user(self, name, is_visitor=False, secret_key=None):
-        data = {"name": name, "isVisitor": is_visitor, "secret_key": secret_key}
+    def create_user(self, name, is_visitor=False, secret_key=None, replit_agent_url=None, replit_agent_token=None):
+        data = {
+            "name": name,
+            "isVisitor": is_visitor,
+            "secret_key": secret_key,
+            "replit_agent_url": replit_agent_url,
+            "replit_agent_token": replit_agent_token
+        }
         return self.supabase.table("users").insert(data).execute()
 
     def get_all_users(self):
