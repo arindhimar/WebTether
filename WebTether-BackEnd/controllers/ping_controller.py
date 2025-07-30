@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models.ping_model import PingModel
 from utils.selenium_checker import run_manual_site_check
+from utils.jwt_utils import decode_token
 
 ping_controller = Blueprint("ping_controller", __name__)
 ping_model = PingModel()
@@ -74,3 +75,13 @@ def manual_ping():
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@ping_controller.route("/available-sites", methods=["GET"])
+def get_available_sites():
+    print("Fetching available sites")
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    claims = decode_token(token)  
+    current_uid = claims.get("user_id")
+
+    result = supabase.table("website").select("*").neq("uid", current_uid).execute()
+    return jsonify(result.data), 200

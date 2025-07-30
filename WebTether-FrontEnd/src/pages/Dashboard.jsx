@@ -10,6 +10,7 @@ import { WebsiteList } from "../components/dashboard/WebsiteList"
 import { UptimeChart } from "../components/dashboard/UptimeChart"
 import { ValidatorActivities } from "../components/dashboard/ValidatorActivities"
 import { PingQueue } from "../components/dashboard/PingQueue"
+import { AvailableSites } from "../components/dashboard/AvailableSites"
 import { UserSettings } from "../components/dashboard/UserSettings"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { useToast } from "../hooks/use-toast"
@@ -123,10 +124,11 @@ export default function Dashboard() {
           <StatsOverview websites={websites} pings={pings} user={user} />
 
           {/* Main Content Tabs */}
-          <Tabs defaultValue={user?.isVisitor ? "validator" : "websites"} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue={user?.isVisitor ? "available-sites" : "websites"} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="websites">My Websites</TabsTrigger>
-              <TabsTrigger value="validator">{user?.isVisitor ? "Validator Dashboard" : "Available Pings"}</TabsTrigger>
+              <TabsTrigger value="available-sites">Available Sites</TabsTrigger>
+              <TabsTrigger value="validator">{user?.isVisitor ? "My Activity" : "Ping Queue"}</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
@@ -146,6 +148,10 @@ export default function Dashboard() {
               </div>
             </TabsContent>
 
+            <TabsContent value="available-sites" className="space-y-6">
+              <AvailableSites pings={pings} onPingAccepted={loadDashboardData} />
+            </TabsContent>
+
             <TabsContent value="validator" className="space-y-6">
               {user?.isVisitor ? (
                 <ValidatorActivities pings={pings} userId={user.id} />
@@ -163,3 +169,4 @@ export default function Dashboard() {
     </div>
   )
 }
+  

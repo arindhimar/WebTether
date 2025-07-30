@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models.website_model import WebsiteModel
+from utils.jwt_utils import decode_token
 
 website_controller = Blueprint("website_controller", __name__)
 website_model = WebsiteModel()
@@ -35,3 +36,12 @@ def update_website(wid):
 def delete_website(wid):
     website_model.delete_website(wid)
     return jsonify({"message": "Deleted"}), 200
+
+@website_controller.route("/available-sites", methods=["GET"])
+def get_available_sites():
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    claims = decode_token(token)
+    current_uid = claims.get("user_id")
+
+    result = website_model.get_available_sites_for_user(current_uid)
+    return jsonify(result.data), 200

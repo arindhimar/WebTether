@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
@@ -10,18 +10,29 @@ import { Badge } from "../ui/badge"
 import { useAuth } from "../../contexts/AuthContext"
 import { userAPI } from "../../services/api"
 import { useToast } from "../../hooks/use-toast"
-import { Settings, Zap, Save, ExternalLink, AlertCircle, CheckCircle } from "lucide-react"
+import { Settings, Zap, Save, ExternalLink, AlertCircle, CheckCircle, RefreshCw } from "lucide-react"
+// Import the utility at the top
+import { hasValidReplitAgent, getReplitAgentStatus, debugReplitAgent } from "../../utils/replitAgent.js"
 
 export function UserSettings() {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     replit_agent_url: user?.replit_agent_url || "",
-    replit_agent_token: user?.replit_agent_token || "",
+    replit_agent_token: localStorage.getItem("web-tether-token") || "", // Use JWT token
   })
 
-  const hasReplitAgent = user?.replit_agent_url && user?.replit_agent_token
+  // Replace the hasReplitAgent check
+  const hasReplitAgent = hasValidReplitAgent(user)
+  const agentStatus = getReplitAgentStatus(user)
+
+  // Add debug logging and status display
+  useEffect(() => {
+    if (user) {
+      debugReplitAgent(user)
+    }
+  }, [user])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -33,9 +44,11 @@ export function UserSettings() {
     setIsLoading(true)
 
     try {
+      const currentJWTToken = localStorage.getItem("web-tether-token")
+
       await userAPI.updateUser(user.id, {
         replit_agent_url: formData.replit_agent_url || null,
-        replit_agent_token: formData.replit_agent_token || null,
+        replit_agent_token: currentJWTToken, // Always use current JWT
       })
 
       toast({
@@ -43,9 +56,19 @@ export function UserSettings() {
         description: "Your Replit agent configuration has been saved successfully.",
       })
 
-      // Update local user data
-      const updatedUser = { ...user, ...formData }
+      // Update local user data and trigger a re-render
+      const updatedUser = {
+        ...user,
+        replit_agent_url: formData.replit_agent_url,
+        replit_agent_token: currentJWTToken,
+      }
+
+      // Update the user in AuthContext
+      setUser(updatedUser)
       localStorage.setItem("web-tether-user", JSON.stringify(updatedUser))
+
+      // Force a page refresh to ensure all components get the updated user data
+      window.location.reload()
     } catch (error) {
       console.error("Error updating settings:", error)
       toast({
@@ -55,6 +78,29 @@ export function UserSettings() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Add a function to refresh user data
+  const refreshUserData = async () => {
+    try {
+      const latestUserData = await userAPI.getUserById(user.id)
+      const updatedUser = { ...user, ...latestUserData }
+
+      setUser(updatedUser)
+      localStorage.setItem("web-tether-user", JSON.stringify(updatedUser))
+
+      toast({
+        title: "Data Refreshed",
+        description: "User data has been refreshed from the database.",
+      })
+    } catch (error) {
+      console.error("Error refreshing user data:", error)
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh user data. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -91,15 +137,21 @@ export function UserSettings() {
       {user?.isVisitor && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-blue-600" />
-              Replit Agent Configuration
-              {hasReplitAgent ? (
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-amber-500" />
-              )}
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-blue-600" />
+                Replit Agent Configuration
+                {hasReplitAgent ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                )}
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={refreshUserData}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Data
+              </Button>
+            </div>
             <CardDescription>
               Configure your Replit agent to perform website validations and earn rewards
             </CardDescription>
@@ -154,19 +206,34 @@ export function UserSettings() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="replit_agent_token">Replit Agent Token</Label>
+                <Label htmlFor="replit_agent_token">Agent Token (JWT)</Label>
                 <Input
                   id="replit_agent_token"
                   name="replit_agent_token"
-                  type="password"
-                  placeholder="Your agent authentication token"
+                  type="text"
+                  placeholder="Your JWT authentication token"
                   value={formData.replit_agent_token}
                   onChange={handleInputChange}
                   disabled={isLoading}
+                  readOnly
+                  className="bg-muted"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Authentication token for secure communication with your agent
+                  Your Web-Tether JWT token - automatically synced with your login session
                 </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      replit_agent_token: localStorage.getItem("web-tether-token") || "",
+                    }))
+                  }
+                >
+                  Refresh Token
+                </Button>
               </div>
 
               <Button
@@ -201,6 +268,23 @@ export function UserSettings() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+      {/* Add a debug section in the component (after the agent status card) */}
+      {user?.isVisitor && (
+        <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-xs font-mono">
+              <div>User ID: {user?.id}</div>
+              <div>Agent URL: {user?.replit_agent_url || "Not set"}</div>
+              <div>Agent Token: {user?.replit_agent_token ? "Present" : "Not set"}</div>
+              <div>Status: {agentStatus.message}</div>
+              <div>Configured: {hasReplitAgent ? "Yes" : "No"}</div>
+            </div>
           </CardContent>
         </Card>
       )}

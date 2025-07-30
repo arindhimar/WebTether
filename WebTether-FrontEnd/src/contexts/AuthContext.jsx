@@ -1,10 +1,11 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { authAPI } from "../services/api"
+import { authAPI, userAPI } from "../services/api"
 
 const AuthContext = createContext({
   user: null,
+  setUser: () => {}, // Add this line
   login: () => {},
   signup: () => {},
   logout: () => {},
@@ -19,32 +20,58 @@ export function AuthProvider({ children }) {
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
-    // Check if user is already logged in on app start
-    const storedUser = localStorage.getItem("web-tether-user")
-    const storedToken = localStorage.getItem("web-tether-token")
-    const onboardingComplete = localStorage.getItem("web-tether-onboarding-complete")
+    const initializeAuth = async () => {
+      // Check if user is already logged in on app start
+      const storedUser = localStorage.getItem("web-tether-user")
+      const storedToken = localStorage.getItem("web-tether-token")
+      const onboardingComplete = localStorage.getItem("web-tether-onboarding-complete")
 
-    if (storedUser && storedToken) {
-      const userData = JSON.parse(storedUser)
-      setUser(userData)
+      if (storedUser && storedToken) {
+        const userData = JSON.parse(storedUser)
 
-      // Show onboarding if not completed and user just signed up
-      if (!onboardingComplete && userData.isNewUser) {
-        setShowOnboarding(true)
+        try {
+          // Fetch latest user data from database to sync any changes
+          const latestUserData = await userAPI.getUserById(userData.id)
+          const syncedUserData = { ...userData, ...latestUserData }
+
+          setUser(syncedUserData)
+          localStorage.setItem("web-tether-user", JSON.stringify(syncedUserData))
+
+          // Show onboarding if not completed and user just signed up
+          if (!onboardingComplete && syncedUserData.isNewUser) {
+            setShowOnboarding(true)
+          }
+        } catch (error) {
+          console.error("Error syncing user data:", error)
+          // If we can't sync, use stored data but user might need to refresh
+          setUser(userData)
+
+          if (!onboardingComplete && userData.isNewUser) {
+            setShowOnboarding(true)
+          }
+        }
       }
+      setIsLoading(false)
     }
-    setIsLoading(false)
+
+    initializeAuth()
   }, [])
 
   const login = async (email, password) => {
     try {
       const data = await authAPI.login(email, password)
 
+      // Fetch the complete user data from the database to ensure we have latest info
+      const completeUserData = await userAPI.getUserById(data.user.id)
+
+      // Merge the login response with complete user data
+      const fullUserData = { ...data.user, ...completeUserData }
+
       // Store user data and token from the API response
-      setUser(data.user)
-      localStorage.setItem("web-tether-user", JSON.stringify(data.user))
+      setUser(fullUserData)
+      localStorage.setItem("web-tether-user", JSON.stringify(fullUserData))
       localStorage.setItem("web-tether-token", data.token)
-      return { success: true, data }
+      return { success: true, data: { ...data, user: fullUserData } }
     } catch (error) {
       return { success: false, error: error.message || "Login failed" }
     }
@@ -94,6 +121,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
+    setUser, // Add this line
     login,
     signup,
     logout,

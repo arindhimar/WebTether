@@ -167,7 +167,7 @@ export function ValidatorActivities({ pings, userId }) {
                 </div>
               ))}
             </div>
-          )}
+          )}  
         </CardContent>
       </Card>
     </div>

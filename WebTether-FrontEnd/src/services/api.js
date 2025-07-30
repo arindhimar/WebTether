@@ -107,7 +107,12 @@ export const pingAPI = {
     })
   },
 
-  // New manual ping endpoint
+  // Get available sites for current user to ping (corrected endpoint)
+  getAvailableSites: async () => {
+    return makeRequest("/websites/available-sites")
+  },
+
+  // Manual ping endpoint
   manualPing: async (uid, wid, url) => {
     return makeRequest("/pings/ping/manual", {
       method: "POST",
