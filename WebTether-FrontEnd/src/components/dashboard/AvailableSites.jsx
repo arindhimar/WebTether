@@ -7,7 +7,7 @@ import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Badge } from "../ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { pingAPI } from "../../services/api"
+import { websiteAPI, pingAPI } from "../../services/api"
 import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../hooks/use-toast"
 import {
@@ -22,10 +22,11 @@ import {
   ExternalLink,
   Calendar,
   Tag,
+  Cloud,
+  MapPin,
 } from "lucide-react"
 
-// Import the utility at the top
-import { hasValidReplitAgent, debugReplitAgent } from "../../utils/replitAgent.js"
+import { hasValidCloudflareAgent, debugCloudflareAgent } from "../../utils/cloudflareAgent"
 
 export function AvailableSites({ pings, onPingAccepted }) {
   const [availableSites, setAvailableSites] = useState([])
@@ -40,12 +41,11 @@ export function AvailableSites({ pings, onPingAccepted }) {
   const { user } = useAuth()
   const { toast } = useToast()
 
-  // Replace the hasReplitAgent check
-  const hasReplitAgent = hasValidReplitAgent(user)
+  const hasCloudflareAgent = hasValidCloudflareAgent(user)
 
   useEffect(() => {
     if (user) {
-      debugReplitAgent(user)
+      debugCloudflareAgent(user)
     }
     loadAvailableSites()
   }, [user])
@@ -59,7 +59,7 @@ export function AvailableSites({ pings, onPingAccepted }) {
     setError(null)
 
     try {
-      const sites = await pingAPI.getAvailableSites()
+      const sites = await websiteAPI.getAvailableSites()
       setAvailableSites(sites)
     } catch (error) {
       console.error("Error loading available sites:", error)
@@ -115,10 +115,10 @@ export function AvailableSites({ pings, onPingAccepted }) {
   }
 
   const handlePingSite = async (site) => {
-    if (!hasReplitAgent) {
+    if (!hasCloudflareAgent) {
       toast({
-        title: "Replit Agent Required",
-        description: "Please configure your Replit agent in settings to ping websites.",
+        title: "Cloudflare Worker Required",
+        description: "Please configure your Cloudflare Worker in settings to ping websites.",
         variant: "destructive",
       })
       return
@@ -131,11 +131,12 @@ export function AvailableSites({ pings, onPingAccepted }) {
 
       const isUp = result.result?.is_up || false
       const latency = result.result?.latency_ms || null
+      const region = result.result?.region || "cloudflare-edge"
       const reward = Math.floor(Math.random() * 5) + 3 // 3-7 coins
 
       toast({
         title: "Ping Completed!",
-        description: `${getSiteName(site.url)} ${isUp ? "is online" : "is offline"}${latency ? ` (${latency}ms)` : ""}. You earned ${reward} coins!`,
+        description: `${getSiteName(site.url)} ${isUp ? "is online" : "is offline"}${latency ? ` (${latency}ms)` : ""} from ${region}. You earned ${reward} coins!`,
       })
 
       // Trigger refresh of dashboard data
@@ -149,8 +150,8 @@ export function AvailableSites({ pings, onPingAccepted }) {
       console.error("Error pinging site:", error)
 
       let errorMessage = "Failed to ping website. Please try again."
-      if (error.message.includes("not linked a Replit agent")) {
-        errorMessage = "Please configure your Replit agent in settings first."
+      if (error.message.includes("not linked a Cloudflare Worker")) {
+        errorMessage = "Please configure your Cloudflare Worker in settings first."
       }
 
       toast({
@@ -245,16 +246,16 @@ export function AvailableSites({ pings, onPingAccepted }) {
         </Button>
       </div>
 
-      {/* Replit Agent Status */}
-      {!hasReplitAgent && (
+      {/* Cloudflare Worker Status */}
+      {!hasCloudflareAgent && (
         <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-amber-600" />
               <div>
-                <h4 className="font-semibold text-amber-800 dark:text-amber-200">Replit Agent Required</h4>
+                <h4 className="font-semibold text-amber-800 dark:text-amber-200">Cloudflare Worker Required</h4>
                 <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Configure your Replit agent in settings to start pinging websites and earning rewards.
+                  Configure your Cloudflare Worker in settings to start pinging websites and earning rewards.
                 </p>
               </div>
             </div>
@@ -266,7 +267,7 @@ export function AvailableSites({ pings, onPingAccepted }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5 text-blue-600" />
+            <Filter className="h-5 w-5 text-orange-600" />
             Filter & Search
           </CardTitle>
         </CardHeader>
@@ -388,16 +389,22 @@ export function AvailableSites({ pings, onPingAccepted }) {
                           <span>3-7 coins</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Zap className="h-4 w-4 text-blue-500" />
-                          <span>JWT Auth</span>
+                          <Cloud className="h-4 w-4 text-orange-500" />
+                          <span>CF Edge</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4 text-blue-500" />
+                          <span>Global</span>
                         </div>
                       </div>
 
                       <Button
                         size="sm"
                         onClick={() => handlePingSite(site)}
-                        disabled={acceptingPing === site.wid || !hasReplitAgent || (recentPing && recentPing.recently)}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50"
+                        disabled={
+                          acceptingPing === site.wid || !hasCloudflareAgent || (recentPing && recentPing.recently)
+                        }
+                        className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:opacity-50"
                       >
                         {acceptingPing === site.wid ? (
                           <>

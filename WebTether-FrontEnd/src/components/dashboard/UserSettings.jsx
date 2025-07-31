@@ -12,7 +12,8 @@ import { userAPI } from "../../services/api"
 import { useToast } from "../../hooks/use-toast"
 import { Settings, Zap, Save, ExternalLink, AlertCircle, CheckCircle, RefreshCw } from "lucide-react"
 // Import the utility at the top
-import { hasValidReplitAgent, getReplitAgentStatus, debugReplitAgent } from "../../utils/replitAgent.js"
+import { hasValidReplitAgent, getReplitAgentStatus, debugReplitAgent } from "../../utils/replitAgent"
+import { hasValidCloudflareAgent, getCloudflareAgentStatus, debugCloudflareAgent } from "../../utils/cloudflareAgent"
 
 export function UserSettings() {
   const { user, setUser } = useAuth()
@@ -20,17 +21,22 @@ export function UserSettings() {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     replit_agent_url: user?.replit_agent_url || "",
+    agent_url: user?.agent_url || "",
     replit_agent_token: localStorage.getItem("web-tether-token") || "", // Use JWT token
   })
 
   // Replace the hasReplitAgent check
   const hasReplitAgent = hasValidReplitAgent(user)
-  const agentStatus = getReplitAgentStatus(user)
+  const replitAgentStatus = getReplitAgentStatus(user)
+
+  const hasCloudflareAgent = hasValidCloudflareAgent(user)
+  const cloudflareAgentStatus = getCloudflareAgentStatus(user)
 
   // Add debug logging and status display
   useEffect(() => {
     if (user) {
       debugReplitAgent(user)
+      debugCloudflareAgent(user)
     }
   }, [user])
 
@@ -48,18 +54,20 @@ export function UserSettings() {
 
       await userAPI.updateUser(user.id, {
         replit_agent_url: formData.replit_agent_url || null,
+        agent_url: formData.agent_url || null,
         replit_agent_token: currentJWTToken, // Always use current JWT
       })
 
       toast({
         title: "Settings Updated",
-        description: "Your Replit agent configuration has been saved successfully.",
+        description: "Your agent configuration has been saved successfully.",
       })
 
       // Update local user data and trigger a re-render
       const updatedUser = {
         ...user,
         replit_agent_url: formData.replit_agent_url,
+        agent_url: formData.agent_url,
         replit_agent_token: currentJWTToken,
       }
 
@@ -206,6 +214,31 @@ export function UserSettings() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="agent_url">Cloudflare Worker URL</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open("https://workers.cloudflare.com", "_blank")}
+                  className="h-auto p-1"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+              <Input
+                id="agent_url"
+                name="agent_url"
+                type="url"
+                placeholder="https://your-worker.your-subdomain.workers.dev"
+                value={formData.agent_url}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                The URL of your deployed Cloudflare Worker that will perform website checks
+              </p>
+
+              <div className="space-y-2">
                 <Label htmlFor="replit_agent_token">Agent Token (JWT)</Label>
                 <Input
                   id="replit_agent_token"
@@ -268,10 +301,25 @@ export function UserSettings() {
                 </div>
               </div>
             )}
+
+            {hasCloudflareAgent && (
+              <div className="mt-6 p-4 border rounded-lg bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div>
+                    <h4 className="font-semibold text-green-800 dark:text-green-200">Worker Connected</h4>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Your Cloudflare Worker is configured and ready to accept ping requests.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
-      {/* Add a debug section in the component (after the agent status card) */}
+
+      {/* Debug section */}
       {user?.isVisitor && (
         <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
           <CardHeader>
@@ -280,10 +328,13 @@ export function UserSettings() {
           <CardContent>
             <div className="space-y-2 text-xs font-mono">
               <div>User ID: {user?.id}</div>
-              <div>Agent URL: {user?.replit_agent_url || "Not set"}</div>
-              <div>Agent Token: {user?.replit_agent_token ? "Present" : "Not set"}</div>
-              <div>Status: {agentStatus.message}</div>
-              <div>Configured: {hasReplitAgent ? "Yes" : "No"}</div>
+              <div>Replit Agent URL: {user?.replit_agent_url || "Not set"}</div>
+              <div>Worker URL: {user?.agent_url || "Not set"}</div>
+              <div>JWT Token: {user?.replit_agent_token ? "Present" : "Not set"}</div>
+              <div>Replit Agent Status: {replitAgentStatus.message}</div>
+              <div>Cloudflare Worker Status: {cloudflareAgentStatus.message}</div>
+              <div>Replit Agent Configured: {hasReplitAgent ? "Yes" : "No"}</div>
+              <div>Cloudflare Worker Configured: {hasCloudflareAgent ? "Yes" : "No"}</div>
             </div>
           </CardContent>
         </Card>

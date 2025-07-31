@@ -9,14 +9,13 @@ class PingModel:
     def __init__(self):
         self.supabase = supabase
 
-    def create_ping(self, wid, is_up, latency_ms=None, region=None, uid=None, replit_used=True):
+    def create_ping(self, wid, is_up, latency_ms, region, uid):
         data = {
             "wid": wid,
-            "uid": uid,
             "is_up": is_up,
             "latency_ms": latency_ms,
             "region": region,
-            "replit_used": replit_used
+            "uid": uid
         }
         return self.supabase.table("ping").insert(data).execute()
 

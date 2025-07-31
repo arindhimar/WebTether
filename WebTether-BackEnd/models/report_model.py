@@ -9,12 +9,8 @@ class ReportModel:
     def __init__(self):
         self.supabase = supabase
 
-    def create_report(self, pid, reason, uid=None):
-        data = {
-            "pid": pid,
-            "uid": uid,
-            "reason": reason
-        }
+    def create_report(self, pid, uid, reason):
+        data = {"pid": pid, "uid": uid, "reason": reason}
         return self.supabase.table("report").insert(data).execute()
 
     def get_all_reports(self):

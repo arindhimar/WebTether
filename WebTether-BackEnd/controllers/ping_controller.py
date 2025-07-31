@@ -1,12 +1,12 @@
 from flask import Blueprint, request, jsonify
 from models.ping_model import PingModel
-from utils.selenium_checker import run_manual_site_check
 from utils.jwt_utils import decode_token
+import requests
 
 ping_controller = Blueprint("ping_controller", __name__)
 ping_model = PingModel()
 
-@ping_controller.route('/ping', methods=['POST'])
+@ping_controller.route('/pings', methods=['POST'])
 def create_ping():
     data = request.json
     res = ping_model.create_ping(
@@ -18,28 +18,25 @@ def create_ping():
     )
     return jsonify(res.data), 201
 
-@ping_controller.route('/ping', methods=['GET'])
+@ping_controller.route('/pings', methods=['GET'])
 def list_pings():
-    res = ping_model.get_all_pings()
-    return jsonify(res.data), 200
+    return jsonify(ping_model.get_all_pings().data), 200
 
-@ping_controller.route('/ping/<int:pid>', methods=['GET'])
+@ping_controller.route('/pings/<int:pid>', methods=['GET'])
 def get_ping(pid):
-    res = ping_model.get_ping_by_id(pid)
-    return jsonify(res.data), 200
+    return jsonify(ping_model.get_ping_by_id(pid).data), 200
 
-@ping_controller.route('/ping/<int:pid>', methods=['PUT'])
+@ping_controller.route('/pings/<int:pid>', methods=['PUT'])
 def update_ping(pid):
     data = request.json
-    res = ping_model.update_ping(pid, data)
-    return jsonify(res.data), 200
+    return jsonify(ping_model.update_ping(pid, data).data), 200
 
-@ping_controller.route('/ping/<int:pid>', methods=['DELETE'])
+@ping_controller.route('/pings/<int:pid>', methods=['DELETE'])
 def delete_ping(pid):
     ping_model.delete_ping(pid)
     return jsonify({"message": "Deleted"}), 200
 
-@ping_controller.route('/ping/manual', methods=['POST'])
+@ping_controller.route('/pings/manual', methods=['POST'])
 def manual_ping():
     data = request.json
     uid = data.get("uid")
@@ -47,18 +44,16 @@ def manual_ping():
     url = data.get("url")
 
     if not uid or not wid or not url:
-        return jsonify({"error": "Missing uid, wid or url"}), 400
+        return jsonify({"error": "Missing uid, wid, or url"}), 400
 
-    user = user_model.get_user_by_id(uid).data
-    agent_url = user.get("replit_agent_url")
-    agent_token = user.get("replit_agent_token")
-
-    if not agent_url or not agent_token:
-        return jsonify({"error": "User has not linked a Replit agent"}), 400
+    # Cloudflare Worker URL is fixed (hosted by you)
+    cloudflare_worker_url = os.getenv("CLOUDFLARE_WORKER_URL")
+    if not cloudflare_worker_url:
+        return jsonify({"error": "Cloudflare Worker URL is not configured"}), 500
 
     try:
-        response = requests.post(agent_url, json={"url": url}, headers={"Authorization": f"Bearer {agent_token}"})
-        result = response.json()
+        res = requests.post(cloudflare_worker_url, json={"url": url})
+        result = res.json()
 
         ping_model.create_ping(
             wid=wid,
@@ -66,7 +61,7 @@ def manual_ping():
             latency_ms=result.get("latency_ms"),
             region=result.get("region"),
             uid=uid,
-            replit_used=True
+            replit_used=False
         )
 
         return jsonify({
@@ -75,13 +70,3 @@ def manual_ping():
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@ping_controller.route("/available-sites", methods=["GET"])
-def get_available_sites():
-    print("Fetching available sites")
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    claims = decode_token(token)  
-    current_uid = claims.get("user_id")
-
-    result = supabase.table("website").select("*").neq("uid", current_uid).execute()
-    return jsonify(result.data), 200

@@ -5,7 +5,7 @@ import { authAPI, userAPI } from "../services/api"
 
 const AuthContext = createContext({
   user: null,
-  setUser: () => {}, // Add this line
+  setUser: () => {},
   login: () => {},
   signup: () => {},
   logout: () => {},
@@ -121,7 +121,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
-    setUser, // Add this line
+    setUser,
     login,
     signup,
     logout,

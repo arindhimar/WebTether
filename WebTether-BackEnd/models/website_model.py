@@ -9,13 +9,8 @@ class WebsiteModel:
     def __init__(self):
         self.supabase = supabase
 
-    def create_website(self, url, uid, category=None, status=None):
-        data = {
-            "url": url,
-            "uid": uid,
-            "category": category,
-            "status": status
-        }
+    def create_website(self, url, uid, category):
+        data = {"url": url, "uid": uid, "category": category}
         return self.supabase.table("website").insert(data).execute()
 
     def get_all_websites(self):
@@ -29,5 +24,3 @@ class WebsiteModel:
 
     def delete_website(self, wid):
         return self.supabase.table("website").delete().eq("wid", wid).execute()
-    def get_available_sites_for_user(self, uid):
-        return self.supabase.table("website").select("*").neq("uid", uid).execute()

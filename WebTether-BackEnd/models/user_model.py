@@ -9,14 +9,8 @@ class UserModel:
     def __init__(self):
         self.supabase = supabase
 
-    def create_user(self, name, is_visitor=False, secret_key=None, replit_agent_url=None, replit_agent_token=None):
-        data = {
-            "name": name,
-            "isVisitor": is_visitor,
-            "secret_key": secret_key,
-            "replit_agent_url": replit_agent_url,
-            "replit_agent_token": replit_agent_token
-        }
+    def create_user(self, name, isVisitor, secret_key):
+        data = {"name": name, "isVisitor": isVisitor, "secret_key": secret_key}
         return self.supabase.table("users").insert(data).execute()
 
     def get_all_users(self):

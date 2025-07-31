@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from utils.jwt_utils import generate_token, decode_token
 
 load_dotenv()
-
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 class AuthModel:

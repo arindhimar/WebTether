@@ -75,6 +75,11 @@ export const websiteAPI = {
       method: "DELETE",
     })
   },
+
+  // Get available sites for current user to ping (updated endpoint)
+  getAvailableSites: async () => {
+    return makeRequest("/websites/available-sites")
+  },
 }
 
 // Ping API
@@ -107,14 +112,9 @@ export const pingAPI = {
     })
   },
 
-  // Get available sites for current user to ping (corrected endpoint)
-  getAvailableSites: async () => {
-    return makeRequest("/websites/available-sites")
-  },
-
   // Manual ping endpoint
   manualPing: async (uid, wid, url) => {
-    return makeRequest("/pings/ping/manual", {
+    return makeRequest("/pings/manual", {
       method: "POST",
       body: JSON.stringify({ uid, wid, url }),
     })
@@ -123,20 +123,14 @@ export const pingAPI = {
 
 // User API
 export const userAPI = {
-  createUser: async (
-    name,
-    isVisitor = false,
-    secret_key = null,
-    replit_agent_url = null,
-    replit_agent_token = null,
-  ) => {
+  createUser: async (name, isVisitor = false, secret_key = null, agent_url = null, replit_agent_token = null) => {
     return makeRequest("/users/users", {
       method: "POST",
       body: JSON.stringify({
         name,
         isVisitor,
         secret_key,
-        replit_agent_url,
+        agent_url,
         replit_agent_token,
       }),
     })
