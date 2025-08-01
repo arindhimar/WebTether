@@ -10,6 +10,7 @@ user_model = UserModel()
 @auth_controller.route('/signup', methods=['POST'])
 def signup():
     data = request.json
+    print(data)
     user_row = user_model.create_user(
         data["name"],
         data.get("isVisitor", False),

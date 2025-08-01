@@ -1,190 +1,124 @@
-const API_BASE_URL = "http://127.0.0.1:5000"
+import axios from "axios"
 
-// Helper function to get auth token
-const getAuthToken = () => {
-  return localStorage.getItem("web-tether-token")
-}
+const API_BASE_URL = "http://localhost:5000"
 
-// Helper function to make authenticated requests
-const makeRequest = async (url, options = {}) => {
-  const token = getAuthToken()
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers,
+class ApiService {
+  constructor() {
+    this.baseURL = API_BASE_URL
   }
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`
+    const config = {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    }
+
+    // Add auth token if available
+    const token = localStorage.getItem("token")
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+
+    try {
+      const response = await fetch(url, config)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error("API request failed:", error)
+      throw error
+    }
   }
 
-  const response = await fetch(`${API_BASE_URL}${url}`, {
-    ...options,
-    headers,
-  })
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`)
-  }
-
-  return response.json()
-}
-
-// Auth API
-export const authAPI = {
-  login: async (email, password) => {
-    return makeRequest("/auth/login", {
+  // Auth endpoints
+  async login(email, password) {
+    return this.request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     })
-  },
+  }
 
-  signup: async (userData) => {
-    return makeRequest("/auth/signup", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    })
-  },
-}
-
-// Website API
-export const websiteAPI = {
-  createWebsite: async (url, uid, category = null) => {
-    return makeRequest("/websites/website", {
-      method: "POST",
-      body: JSON.stringify({ url, uid, category, status: "active" }),
-    })
-  },
-
-  getAllWebsites: async () => {
-    return makeRequest("/websites/website")
-  },
-
-  getWebsiteById: async (wid) => {
-    return makeRequest(`/websites/website/${wid}`)
-  },
-
-  updateWebsite: async (wid, data) => {
-    return makeRequest(`/websites/website/${wid}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    })
-  },
-
-  deleteWebsite: async (wid) => {
-    return makeRequest(`/websites/website/${wid}`, {
-      method: "DELETE",
-    })
-  },
-
-  // Get available sites for current user to ping (updated endpoint)
-  getAvailableSites: async () => {
-    return makeRequest("/websites/available-sites")
-  },
-}
-
-// Ping API
-export const pingAPI = {
-  createPing: async (wid, is_up, latency_ms = null, region = null, uid = null) => {
-    return makeRequest("/pings/ping", {
-      method: "POST",
-      body: JSON.stringify({ wid, is_up, latency_ms, region, uid }),
-    })
-  },
-
-  getAllPings: async () => {
-    return makeRequest("/pings/ping")
-  },
-
-  getPingById: async (pid) => {
-    return makeRequest(`/pings/ping/${pid}`)
-  },
-
-  updatePing: async (pid, data) => {
-    return makeRequest(`/pings/ping/${pid}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    })
-  },
-
-  deletePing: async (pid) => {
-    return makeRequest(`/pings/ping/${pid}`, {
-      method: "DELETE",
-    })
-  },
-
-  // Manual ping endpoint
-  manualPing: async (uid, wid, url) => {
-    return makeRequest("/pings/manual", {
-      method: "POST",
-      body: JSON.stringify({ uid, wid, url }),
-    })
-  },
-}
-
-// User API
-export const userAPI = {
-  createUser: async (name, isVisitor = false, secret_key = null, agent_url = null, replit_agent_token = null) => {
-    return makeRequest("/users/users", {
+  async signup({ name, email, password, isVisitor = false, secret_key, cloudflare_worker_url = null }) {
+    return this.request("/auth/signup", {
       method: "POST",
       body: JSON.stringify({
         name,
+        email,
+        password,
         isVisitor,
         secret_key,
-        agent_url,
-        replit_agent_token,
+        cloudflare_worker_url
       }),
     })
-  },
+  }
 
-  getAllUsers: async () => {
-    return makeRequest("/users/users")
-  },
+  // User endpoints
+  async getUser(userId) {
+    return this.request(`/users/${userId}`)
+  }
 
-  getUserById: async (userId) => {
-    return makeRequest(`/users/users/${userId}`)
-  },
-
-  updateUser: async (userId, data) => {
-    return makeRequest(`/users/users/${userId}`, {
+  async updateUser(userId, data) {
+    return this.request(`/users/${userId}`, {
       method: "PUT",
       body: JSON.stringify(data),
     })
-  },
+  }
 
-  deleteUser: async (userId) => {
-    return makeRequest(`/users/users/${userId}`, {
+  // Website endpoints
+  async getWebsites() {
+    return this.request("/websites/website")
+  }
+
+  async getAvailableSites() {
+    return this.request("/websites/available-sites")
+  }
+
+  async createWebsite(url, uid, category) {
+    return this.request("/websites/website", {
+      method: "POST",
+      body: JSON.stringify({ url, uid, category }),
+    })
+  }
+
+  async deleteWebsite(wid) {
+    return this.request(`/websites/website/${wid}`, {
       method: "DELETE",
     })
-  },
+  }
+
+  // Ping endpoints
+  async manualPing(wid, uid, url) {
+    return this.request("/pings/manual", {
+      method: "POST",
+      body: JSON.stringify({ wid, uid, url }),
+    })
+  }
+
+  async getPings() {
+    return this.request("/pings")
+  }
 }
 
-// Report API
-export const reportAPI = {
-  createReport: async (pid, reason, uid = null) => {
-    return makeRequest("/reports/report", {
-      method: "POST",
-      body: JSON.stringify({ pid, reason, uid }),
-    })
-  },
+export const api = new ApiService()
 
-  getAllReports: async () => {
-    return makeRequest("/reports/report")
-  },
+export const pingAPI = {
+  getPings: () => api.get("/pings"),
+  createPing: (data) => api.post("/pings", data),
+  manualPing: (wid, uid, url) => api.post("/pings/manual", { wid, uid, url }),
+}
 
-  getReportById: async (rid) => {
-    return makeRequest(`/reports/report/${rid}`)
-  },
-
-  updateReport: async (rid, data) => {
-    return makeRequest(`/reports/report/${rid}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    })
-  },
-
-  deleteReport: async (rid) => {
-    return makeRequest(`/reports/report/${rid}`, {
-      method: "DELETE",
-    })
-  },
+export const websiteAPI = {
+  getWebsites: () => api.get("/websites/website"),
+  getAvailableSites: () => api.get("/websites/available-sites"),
+  createWebsite: (url, uid, category) => api.post("/websites/website", { url, uid, category }),
+  updateWebsite: (wid, data) => api.put(`/websites/website/${wid}`, data),
+  deleteWebsite: (wid) => api.delete(`/websites/website/${wid}`),
 }

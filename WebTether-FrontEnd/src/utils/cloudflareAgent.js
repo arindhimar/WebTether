@@ -1,43 +1,42 @@
-// Utility functions for Cloudflare Worker agent validation and debugging
-
-export const hasValidCloudflareAgent = (user) => {
-  if (!user) return false
-
-  const hasUrl = user.agent_url && user.agent_url.trim() !== ""
-  const hasToken = user.replit_agent_token && user.replit_agent_token.trim() !== "" // Keep using JWT token
-
-  return hasUrl && hasToken
+// Utility functions for Cloudflare Worker agent management
+export const isCloudflareWorkerConfigured = (user) => {
+  return !!(user?.agent_url && user.agent_url.trim() !== "")
 }
 
-export const getCloudflareAgentStatus = (user) => {
-  if (!user) {
-    return { configured: false, message: "User not loaded" }
+export const validateCloudflareWorkerUrl = (url) => {
+  if (!url || url.trim() === "") {
+    return { isValid: false, error: "Cloudflare Worker URL is required" }
   }
 
-  const hasUrl = user.agent_url && user.agent_url.trim() !== ""
-  const hasToken = user.replit_agent_token && user.replit_agent_token.trim() !== ""
-
-  if (!hasUrl && !hasToken) {
-    return { configured: false, message: "No Cloudflare Worker URL or token configured" }
+  try {
+    const urlObj = new URL(url)
+    if (!urlObj.hostname.includes("workers.dev") && !urlObj.hostname.includes("workers.cloudflare.com")) {
+      return {
+        isValid: false,
+        error: "URL must be a valid Cloudflare Worker URL (*.workers.dev or *.workers.cloudflare.com)",
+      }
+    }
+    return { isValid: true }
+  } catch (error) {
+    return { isValid: false, error: "Invalid URL format" }
   }
-
-  if (!hasUrl) {
-    return { configured: false, message: "Cloudflare Worker URL missing" }
-  }
-
-  if (!hasToken) {
-    return { configured: false, message: "JWT token missing" }
-  }
-
-  return { configured: true, message: "Cloudflare Worker agent fully configured" }
 }
 
-export const debugCloudflareAgent = (user) => {
-  console.log("=== Cloudflare Worker Agent Debug ===")
-  console.log("User:", user)
+export const getCloudflareWorkerStatus = (user) => {
+  if (!user) return "not-configured"
+
+  if (isCloudflareWorkerConfigured(user)) {
+    return "configured"
+  }
+
+  return "not-configured"
+}
+
+export const debugCloudflareWorkerInfo = (user) => {
+  console.log("=== Cloudflare Worker Debug Info ===")
+  console.log("User object:", user)
   console.log("Agent URL:", user?.agent_url)
-  console.log("JWT Token:", user?.replit_agent_token ? "Present" : "Missing")
-  console.log("Has valid agent:", hasValidCloudflareAgent(user))
-  console.log("Status:", getCloudflareAgentStatus(user))
+  console.log("Is configured:", isCloudflareWorkerConfigured(user))
+  console.log("Status:", getCloudflareWorkerStatus(user))
   console.log("=====================================")
 }

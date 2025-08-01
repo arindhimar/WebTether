@@ -1,10 +1,13 @@
 from flask import Blueprint, request, jsonify
 from models.ping_model import PingModel
+from models.user_model import UserModel
 from utils.jwt_utils import decode_token
 import requests
+import os
 
 ping_controller = Blueprint("ping_controller", __name__)
 ping_model = PingModel()
+user_model = UserModel()
 
 @ping_controller.route('/pings', methods=['POST'])
 def create_ping():
@@ -38,35 +41,70 @@ def delete_ping(pid):
 
 @ping_controller.route('/pings/manual', methods=['POST'])
 def manual_ping():
-    data = request.json
-    uid = data.get("uid")
-    wid = data.get("wid")
-    url = data.get("url")
-
-    if not uid or not wid or not url:
-        return jsonify({"error": "Missing uid, wid, or url"}), 400
-
-    # Cloudflare Worker URL is fixed (hosted by you)
-    cloudflare_worker_url = os.getenv("CLOUDFLARE_WORKER_URL")
-    if not cloudflare_worker_url:
-        return jsonify({"error": "Cloudflare Worker URL is not configured"}), 500
-
     try:
-        res = requests.post(cloudflare_worker_url, json={"url": url})
-        result = res.json()
+        # Get JWT token from Authorization header
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return jsonify({"error": "Authorization token required"}), 401
 
-        ping_model.create_ping(
-            wid=wid,
-            is_up=result.get("is_up", False),
-            latency_ms=result.get("latency_ms"),
-            region=result.get("region"),
-            uid=uid,
-            replit_used=False
-        )
+        # Decode token to get user info
+        claims = decode_token(token)
+        if not claims:
+            return jsonify({"error": "Invalid token"}), 401
 
-        return jsonify({
-            "status": "recorded",
-            "result": result
-        }), 200
+        data = request.json
+        uid = data.get("uid")
+        wid = data.get("wid")
+        url = data.get("url")
+
+        if not uid or not wid or not url:
+            return jsonify({"error": "Missing uid, wid, or url"}), 400
+
+        # Verify the user ID from token matches the request
+        if claims.get("user_id") != uid:
+            return jsonify({"error": "Token user ID doesn't match request"}), 403
+
+        # Get user's Cloudflare Worker URL
+        user_data = user_model.get_user_by_id(uid).data
+        agent_url = user_data.get("agent_url")
+        
+        if not agent_url:
+            return jsonify({"error": "Cloudflare Worker URL not configured. Please set it in your settings."}), 400
+
+        # Call the user's Cloudflare Worker
+        try:
+            worker_response = requests.post(
+                agent_url,
+                json={"url": url},
+                timeout=15,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if worker_response.status_code != 200:
+                return jsonify({"error": f"Worker returned status {worker_response.status_code}"}), 500
+                
+            result = worker_response.json()
+            
+            # Save ping result to database
+            ping_model.create_ping(
+                wid=wid,
+                is_up=result.get("is_up", False),
+                latency_ms=result.get("latency_ms"),
+                region=result.get("region", "cloudflare-edge"),
+                uid=uid
+            )
+
+            return jsonify({
+                "status": "recorded",
+                "result": result
+            }), 200
+            
+        except requests.exceptions.Timeout:
+            return jsonify({"error": "Worker request timed out"}), 500
+        except requests.exceptions.RequestException as e:
+            return jsonify({"error": f"Failed to reach worker: {str(e)}"}), 500
+        except ValueError as e:
+            return jsonify({"error": "Invalid response from worker"}), 500
+            
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500

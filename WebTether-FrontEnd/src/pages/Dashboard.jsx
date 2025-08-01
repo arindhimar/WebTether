@@ -9,9 +9,9 @@ import { StatsOverview } from "../components/dashboard/StatsOverview"
 import { WebsiteList } from "../components/dashboard/WebsiteList"
 import { UptimeChart } from "../components/dashboard/UptimeChart"
 import { ValidatorActivities } from "../components/dashboard/ValidatorActivities"
-import { PingQueue } from "../components/dashboard/PingQueue"
-import { AvailableSites } from "../components/dashboard/AvailableSites"
-import { UserSettings } from "../components/dashboard/UserSettings"
+import  PingQueue  from "../components/dashboard/PingQueue"
+import  AvailableSites  from "../components/dashboard/AvailableSites"
+import UserSettings from "../components/dashboard/UserSettings"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { useToast } from "../hooks/use-toast"
 
@@ -169,4 +169,3 @@ export default function Dashboard() {
     </div>
   )
 }
-  

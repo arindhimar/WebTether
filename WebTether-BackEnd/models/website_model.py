@@ -19,6 +19,10 @@ class WebsiteModel:
     def get_website_by_id(self, wid):
         return self.supabase.table("website").select("*").eq("wid", wid).single().execute()
 
+    def get_websites_excluding_user(self, uid):
+        """Get all websites except those owned by the specified user"""
+        return self.supabase.table("website").select("*").neq("uid", uid).execute()
+
     def update_website(self, wid, data):
         return self.supabase.table("website").update(data).eq("wid", wid).execute()
 

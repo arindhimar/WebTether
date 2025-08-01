@@ -1,433 +1,240 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
-import { Input } from "../ui/input"
 import { Badge } from "../ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { websiteAPI, pingAPI } from "../../services/api"
 import { useAuth } from "../../contexts/AuthContext"
+import { api } from "../../services/api"
 import { useToast } from "../../hooks/use-toast"
-import {
-  Globe,
-  Search,
-  Filter,
-  RefreshCw,
-  Zap,
-  Clock,
-  Coins,
-  AlertCircle,
-  ExternalLink,
-  Calendar,
-  Tag,
-  Cloud,
-  MapPin,
-} from "lucide-react"
+import { isCloudflareWorkerConfigured } from "../../utils/cloudflareAgent"
+import { Globe, Zap, Clock, MapPin, Cloud, Coins } from "lucide-react"
 
-import { hasValidCloudflareAgent, debugCloudflareAgent } from "../../utils/cloudflareAgent"
-
-export function AvailableSites({ pings, onPingAccepted }) {
-  const [availableSites, setAvailableSites] = useState([])
-  const [filteredSites, setFilteredSites] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-  const [sortBy, setSortBy] = useState("newest")
-  const [acceptingPing, setAcceptingPing] = useState(null)
-
+export default function AvailableSites() {
   const { user } = useAuth()
   const { toast } = useToast()
-
-  const hasCloudflareAgent = hasValidCloudflareAgent(user)
-
-  useEffect(() => {
-    if (user) {
-      debugCloudflareAgent(user)
-    }
-    loadAvailableSites()
-  }, [user])
+  const [sites, setSites] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [pingingStates, setPingingStates] = useState({})
 
   useEffect(() => {
-    filterAndSortSites()
-  }, [availableSites, searchTerm, categoryFilter, sortBy, pings])
+    fetchAvailableSites()
+  }, [])
 
-  const loadAvailableSites = async () => {
-    setIsLoading(true)
-    setError(null)
-
+  const fetchAvailableSites = async () => {
     try {
-      const sites = await websiteAPI.getAvailableSites()
-      setAvailableSites(sites)
+      const data = await api.getAvailableSites()
+      setSites(data)
     } catch (error) {
-      console.error("Error loading available sites:", error)
-      setError(error.message)
+      console.error("Failed to fetch available sites:", error)
       toast({
-        title: "Error Loading Sites",
-        description: "Failed to load available sites. Please try again.",
+        title: "Error",
+        description: "Failed to load available sites",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  const filterAndSortSites = () => {
-    let filtered = [...availableSites]
-
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (site) =>
-          site.url.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (site.category && site.category.toLowerCase().includes(searchTerm.toLowerCase())),
-      )
-    }
-
-    // Apply category filter
-    if (categoryFilter !== "all") {
-      if (categoryFilter === "uncategorized") {
-        filtered = filtered.filter((site) => !site.category)
-      } else {
-        filtered = filtered.filter((site) => site.category === categoryFilter)
-      }
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return new Date(b.created_at) - new Date(a.created_at)
-        case "oldest":
-          return new Date(a.created_at) - new Date(b.created_at)
-        case "alphabetical":
-          return a.url.localeCompare(b.url)
-        case "category":
-          return (a.category || "").localeCompare(b.category || "")
-        default:
-          return 0
-      }
-    })
-
-    setFilteredSites(filtered)
-  }
-
-  const handlePingSite = async (site) => {
-    if (!hasCloudflareAgent) {
+  const handlePing = async (site) => {
+    if (!user?.id) {
       toast({
-        title: "Cloudflare Worker Required",
-        description: "Please configure your Cloudflare Worker in settings to ping websites.",
+        title: "Error",
+        description: "Please log in to ping websites",
         variant: "destructive",
       })
       return
     }
 
-    setAcceptingPing(site.wid)
+    if (!isCloudflareWorkerConfigured(user)) {
+      toast({
+        title: "Worker Not Configured",
+        description: "Please configure your Cloudflare Worker in settings first",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setPingingStates((prev) => ({ ...prev, [site.wid]: true }))
 
     try {
-      const result = await pingAPI.manualPing(user.id, site.wid, site.url)
+      const result = await api.manualPing(site.wid, user.id, site.url)
 
-      const isUp = result.result?.is_up || false
-      const latency = result.result?.latency_ms || null
-      const region = result.result?.region || "cloudflare-edge"
-      const reward = Math.floor(Math.random() * 5) + 3 // 3-7 coins
+      if (result.status === "recorded" && result.result) {
+        const { is_up, latency_ms, region } = result.result
 
-      toast({
-        title: "Ping Completed!",
-        description: `${getSiteName(site.url)} ${isUp ? "is online" : "is offline"}${latency ? ` (${latency}ms)` : ""} from ${region}. You earned ${reward} coins!`,
-      })
-
-      // Trigger refresh of dashboard data
-      if (onPingAccepted) {
-        onPingAccepted()
+        toast({
+          title: is_up ? "Site is UP! 🟢" : "Site is DOWN 🔴",
+          description: (
+            <div className="space-y-1">
+              <p>
+                <strong>URL:</strong> {site.url}
+              </p>
+              <p>
+                <strong>Latency:</strong> {latency_ms}ms
+              </p>
+              <p>
+                <strong>Region:</strong> {region}
+              </p>
+              <p>
+                <strong>Reward:</strong> +5 points earned!
+              </p>
+            </div>
+          ),
+          variant: is_up ? "default" : "destructive",
+        })
+      } else {
+        toast({
+          title: "Ping Completed",
+          description: "Ping result recorded successfully",
+        })
       }
-
-      // Refresh available sites
-      loadAvailableSites()
     } catch (error) {
-      console.error("Error pinging site:", error)
-
-      let errorMessage = "Failed to ping website. Please try again."
-      if (error.message.includes("not linked a Cloudflare Worker")) {
-        errorMessage = "Please configure your Cloudflare Worker in settings first."
-      }
-
+      console.error("Ping failed:", error)
       toast({
         title: "Ping Failed",
-        description: errorMessage,
+        description: error.message || "Failed to ping the website",
         variant: "destructive",
       })
     } finally {
-      setAcceptingPing(null)
+      setPingingStates((prev) => ({ ...prev, [site.wid]: false }))
     }
   }
 
-  const getSiteName = (url) => {
-    return url.replace(/^https?:\/\//, "").replace(/\/$/, "")
-  }
-
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now - date
-    const diffHours = Math.floor(diffMs / (60 * 60 * 1000))
-    const diffDays = Math.floor(diffHours / 24)
-
-    if (diffDays > 0) return `${diffDays}d ago`
-    if (diffHours > 0) return `${diffHours}h ago`
-    return "Recently added"
-  }
-
-  const getRecentPingStatus = (site) => {
-    const sitePings = pings.filter((ping) => ping.wid === site.wid && ping.uid === user.id)
-    const recentPing = sitePings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
-
-    if (!recentPing) return null
-
-    const pingDate = new Date(recentPing.created_at)
-    const hourAgo = new Date(Date.now() - 60 * 60 * 1000)
-
-    if (pingDate > hourAgo) {
-      return {
-        recently: true,
-        status: recentPing.is_up ? "up" : "down",
-        time: formatTimeAgo(recentPing.created_at),
-      }
-    }
-
-    return null
-  }
-
-  const getUniqueCategories = () => {
-    const categories = availableSites
-      .map((site) => site.category)
-      .filter(Boolean)
-      .filter((category, index, arr) => arr.indexOf(category) === index)
-    return categories.sort()
-  }
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <RefreshCw className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
-        <h3 className="text-lg font-semibold mb-2">Loading Available Sites</h3>
-        <p className="text-muted-foreground">Fetching websites you can ping...</p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Available Sites to Ping
+          </CardTitle>
+          <CardDescription>Loading available websites...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse">
+                <div className="h-16 bg-gray-200 rounded-lg"></div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
-  if (error) {
+  if (!isCloudflareWorkerConfigured(user)) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Error Loading Sites</h3>
-        <p className="text-muted-foreground mb-4">{error}</p>
-        <Button onClick={loadAvailableSites} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Try Again
-        </Button>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Available Sites to Ping
+          </CardTitle>
+          <CardDescription>Configure your Cloudflare Worker to start pinging websites</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Cloud className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Cloudflare Worker Required</h3>
+            <p className="text-muted-foreground mb-4">
+              You need to configure your Cloudflare Worker to ping websites and earn rewards.
+            </p>
+            <Button
+              className="bg-orange-500 hover:bg-orange-600"
+              onClick={() => (window.location.href = "/dashboard?tab=settings")}
+            >
+              <Cloud className="h-4 w-4 mr-2" />
+              Configure Worker
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Available Sites</h1>
-          <p className="text-muted-foreground">Browse and ping websites from other users to earn rewards</p>
-        </div>
-        <Button onClick={loadAvailableSites} variant="outline" disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Globe className="h-5 w-5" />
+          Available Sites to Ping
+        </CardTitle>
+        <CardDescription>Ping websites using your Cloudflare Worker and earn rewards</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {sites.length === 0 ? (
+          <div className="text-center py-8">
+            <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Sites Available</h3>
+            <p className="text-muted-foreground">No websites are currently available for pinging. Check back later!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sites.map((site) => (
+              <div
+                key={site.wid}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Globe className="h-4 w-4 text-gray-500" />
+                    <span className="font-medium">{site.url}</span>
+                    {site.category && (
+                      <Badge variant="secondary" className="text-xs">
+                        {site.category}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Ping from your location
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Coins className="h-3 w-3" />
+                      +5 points reward
+                    </span>
+                  </div>
+                </div>
 
-      {/* Cloudflare Worker Status */}
-      {!hasCloudflareAgent && (
-        <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
-              <div>
-                <h4 className="font-semibold text-amber-800 dark:text-amber-200">Cloudflare Worker Required</h4>
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Configure your Cloudflare Worker in settings to start pinging websites and earning rewards.
-                </p>
+                <Button
+                  onClick={() => handlePing(site)}
+                  disabled={pingingStates[site.wid]}
+                  className="bg-blue-500 hover:bg-blue-600"
+                >
+                  {pingingStates[site.wid] ? (
+                    <>
+                      <Clock className="h-4 w-4 mr-2 animate-spin" />
+                      Pinging...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Ping
+                    </>
+                  )}
+                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* Filters and Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5 text-orange-600" />
-            Filter & Search
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search websites..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                {getUniqueCategories().map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Newest First</SelectItem>
-                <SelectItem value="oldest">Oldest First</SelectItem>
-                <SelectItem value="alphabetical">Alphabetical</SelectItem>
-                <SelectItem value="category">By Category</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="text-sm text-muted-foreground flex items-center">
-              <Globe className="h-4 w-4 mr-2" />
-              {filteredSites.length} sites available
+        <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+          <div className="flex items-start gap-2">
+            <Cloud className="h-4 w-4 text-orange-500 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-orange-800">Using your Cloudflare Worker</p>
+              <p className="text-orange-700">
+                Pings are executed from your configured Cloudflare Worker:
+                <code className="bg-orange-100 px-1 rounded ml-1">{user?.agent_url}</code>
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Sites Grid */}
-      {filteredSites.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Sites Found</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || categoryFilter !== "all"
-                ? "Try adjusting your filters to see more results."
-                : "No websites are currently available for pinging."}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredSites.map((site, index) => {
-            const recentPing = getRecentPingStatus(site)
-            const siteName = getSiteName(site.url)
-
-            return (
-              <motion.div
-                key={site.wid}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <Card className="h-full hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg truncate" title={siteName}>
-                          {siteName}
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-2 mt-1">
-                          <Calendar className="h-3 w-3" />
-                          Added {formatTimeAgo(site.created_at)}
-                        </CardDescription>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(site.url, "_blank")}
-                        className="shrink-0"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-2">
-                      {site.category && (
-                        <Badge variant="outline" className="text-xs">
-                          <Tag className="h-3 w-3 mr-1" />
-                          {site.category}
-                        </Badge>
-                      )}
-                      {recentPing && (
-                        <Badge variant={recentPing.status === "up" ? "default" : "destructive"} className="text-xs">
-                          Recently pinged: {recentPing.status}
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="pt-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Coins className="h-4 w-4 text-amber-500" />
-                          <span>3-7 coins</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Cloud className="h-4 w-4 text-orange-500" />
-                          <span>CF Edge</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4 text-blue-500" />
-                          <span>Global</span>
-                        </div>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        onClick={() => handlePingSite(site)}
-                        disabled={
-                          acceptingPing === site.wid || !hasCloudflareAgent || (recentPing && recentPing.recently)
-                        }
-                        className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:opacity-50"
-                      >
-                        {acceptingPing === site.wid ? (
-                          <>
-                            <Zap className="h-3 w-3 mr-1 animate-pulse" />
-                            Pinging...
-                          </>
-                        ) : recentPing && recentPing.recently ? (
-                          <>
-                            <Clock className="h-3 w-3 mr-1" />
-                            Cooldown
-                          </>
-                        ) : (
-                          "Ping Site"
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )
-          })}
         </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

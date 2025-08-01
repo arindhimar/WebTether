@@ -1,117 +1,159 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
-import { CloudflareWorkerSetup } from "./CloudflareWorkerSetup"
-import { useAuth } from "../../contexts/AuthContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
-import { Badge } from "../ui/badge"
-import { CheckCircle, Cloud, Globe, Zap, ArrowRight } from "lucide-react"
+import { Progress } from "../ui/progress"
+import { useAuth } from "../../contexts/AuthContext"
+import CloudflareWorkerSetup from "./CloudflareWorkerSetup"
+import { CheckCircle, Cloud, Globe, Zap } from "lucide-react"
 
-export function OnboardingFlow() {
-  const [currentStep, setCurrentStep] = useState(1)
-  const { user, completeOnboarding } = useAuth()
+const ONBOARDING_STEPS = [
+  {
+    id: "welcome",
+    title: "Welcome to WebTether",
+    description: "Get started with website monitoring and validation",
+  },
+  {
+    id: "cloudflare-worker",
+    title: "Setup Cloudflare Worker",
+    description: "Configure your personal worker for pinging websites",
+  },
+  {
+    id: "complete",
+    title: "Setup Complete",
+    description: "You're ready to start monitoring websites!",
+  },
+]
 
-  const handleWorkerSetupComplete = () => {
-    setCurrentStep(2)
+export default function OnboardingFlow({ onComplete }) {
+  const { user } = useAuth()
+  const [currentStep, setCurrentStep] = useState(0)
+
+  const handleNext = () => {
+    if (currentStep < ONBOARDING_STEPS.length - 1) {
+      setCurrentStep(currentStep + 1)
+    } else {
+      onComplete()
+    }
   }
 
-  const handleWorkerSetupSkip = () => {
-    setCurrentStep(2)
+  const handleSkip = () => {
+    onComplete()
   }
 
-  const handleFinishOnboarding = () => {
-    completeOnboarding()
-  }
+  const progress = ((currentStep + 1) / ONBOARDING_STEPS.length) * 100
 
-  if (currentStep === 1) {
-    return <CloudflareWorkerSetup onComplete={handleWorkerSetupComplete} onSkip={handleWorkerSetupSkip} />
+  const renderStepContent = () => {
+    switch (ONBOARDING_STEPS[currentStep].id) {
+      case "welcome":
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <Globe className="h-8 w-8 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Welcome to WebTether!</h2>
+              <p className="text-muted-foreground">
+                Join our decentralized network of website validators and earn rewards for monitoring websites.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 border rounded-lg">
+                <Cloud className="h-8 w-8 text-orange-500 mx-auto mb-2" />
+                <h3 className="font-semibold mb-1">Your Worker</h3>
+                <p className="text-sm text-muted-foreground">Deploy your own Cloudflare Worker to ping websites</p>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <Zap className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+                <h3 className="font-semibold mb-1">Earn Rewards</h3>
+                <p className="text-sm text-muted-foreground">Get points for every successful website ping</p>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <Globe className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                <h3 className="font-semibold mb-1">Global Network</h3>
+                <p className="text-sm text-muted-foreground">Help monitor websites from your location</p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleNext} className="flex-1">
+                Get Started
+              </Button>
+              <Button variant="outline" onClick={handleSkip}>
+                Skip Setup
+              </Button>
+            </div>
+          </div>
+        )
+
+      case "cloudflare-worker":
+        return <CloudflareWorkerSetup onComplete={handleNext} />
+
+      case "complete":
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Setup Complete!</h2>
+              <p className="text-muted-foreground">You're all set to start monitoring websites and earning rewards.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="font-semibold text-green-800 mb-2">What's Next?</h3>
+                <ul className="space-y-1 text-sm text-green-700">
+                  <li>• Browse available websites to ping</li>
+                  <li>• Add your own websites for monitoring</li>
+                  <li>• Earn points for successful pings</li>
+                  <li>• View your ping history and statistics</li>
+                </ul>
+              </div>
+
+              {user?.agent_url && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="font-semibold text-blue-800 mb-2">Your Cloudflare Worker</h3>
+                  <p className="text-sm text-blue-700">
+                    <code className="bg-blue-100 px-1 rounded">{user.agent_url}</code>
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">Your worker is configured and ready to ping websites!</p>
+                </div>
+              )}
+            </div>
+
+            <Button onClick={onComplete} className="w-full">
+              Go to Dashboard
+            </Button>
+          </div>
+        )
+
+      default:
+        return null
+    }
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-2xl"
-      >
-        <Card className="border-2">
-          <CardHeader className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-green-600 to-emerald-600">
-                <CheckCircle className="h-8 w-8 text-white" />
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl">
+        <Card>
+          <CardHeader>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <CardTitle>{ONBOARDING_STEPS[currentStep].title}</CardTitle>
+                <span className="text-sm text-muted-foreground">
+                  {currentStep + 1} of {ONBOARDING_STEPS.length}
+                </span>
               </div>
+              <CardDescription>{ONBOARDING_STEPS[currentStep].description}</CardDescription>
+              <Progress value={progress} className="w-full" />
             </div>
-            <CardTitle className="text-2xl">Welcome to Web-Tether!</CardTitle>
-            <CardDescription className="text-lg">
-              You're all set up and ready to start validating websites
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex items-center gap-3 p-4 border rounded-lg">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900">
-                  <Cloud className="h-6 w-6 text-orange-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Cloudflare Worker</h3>
-                  <p className="text-sm text-muted-foreground">{user?.agent_url ? "Configured" : "Not configured"}</p>
-                </div>
-                {user?.agent_url && <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />}
-              </div>
-
-              <div className="flex items-center gap-3 p-4 border rounded-lg">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
-                  <Globe className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Validator Role</h3>
-                  <p className="text-sm text-muted-foreground">Ready to ping websites</p>
-                </div>
-                <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />
-              </div>
-            </div>
-
-            <div className="bg-muted/50 p-6 rounded-lg">
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Zap className="h-5 w-5 text-blue-600" />
-                What's Next?
-              </h3>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2">
-                  <Badge variant="outline" className="w-6 h-6 p-0 flex items-center justify-center">
-                    1
-                  </Badge>
-                  <span>Browse available websites in the dashboard</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Badge variant="outline" className="w-6 h-6 p-0 flex items-center justify-center">
-                    2
-                  </Badge>
-                  <span>Click "Ping Site" to validate websites and earn rewards</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Badge variant="outline" className="w-6 h-6 p-0 flex items-center justify-center">
-                    3
-                  </Badge>
-                  <span>Monitor your earnings and validator statistics</span>
-                </li>
-              </ul>
-            </div>
-
-            <Button
-              onClick={handleFinishOnboarding}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-              size="lg"
-            >
-              Get Started
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </CardContent>
+          <CardContent>{renderStepContent()}</CardContent>
         </Card>
-      </motion.div>
+      </div>
     </div>
   )
 }

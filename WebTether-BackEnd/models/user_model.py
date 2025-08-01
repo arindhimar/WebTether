@@ -20,7 +20,9 @@ class UserModel:
         return self.supabase.table("users").select("*").eq("id", user_id).single().execute()
 
     def update_user(self, user_id, data):
-        return self.supabase.table("users").update(data).eq("id", user_id).execute()
+        allowed_fields = ['name', 'agent_url', 'secret_key', 'isVisitor']
+        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+        return self.supabase.table("users").update(filtered_data).eq("id", user_id).execute()
 
     def delete_user(self, user_id):
         return self.supabase.table("users").delete().eq("id", user_id).execute()

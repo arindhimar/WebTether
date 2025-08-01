@@ -60,9 +60,7 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
       password: formData.password,
       isVisitor: formData.isVisitor,
       secret_key: formData.secret_key || "web-tether-default-key",
-      // Don't include Replit agent data in initial signup
-      replit_agent_url: null,
-      replit_agent_token: null,
+      cloudflare_worker_url: null,      
     }
 
     const result = await signup(signupData)

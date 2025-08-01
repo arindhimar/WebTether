@@ -1,142 +1,142 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
-import { authAPI, userAPI } from "../services/api"
+import { createContext, useContext, useState, useEffect } from "react"
+import { api } from "../services/api"
+import { debugCloudflareWorkerInfo } from "../utils/cloudflareAgent"
 
-const AuthContext = createContext({
-  user: null,
-  setUser: () => {},
-  login: () => {},
-  signup: () => {},
-  logout: () => {},
-  isLoading: false,
-  showOnboarding: false,
-  completeOnboarding: () => {},
-})
+const AuthContext = createContext()
 
-export function AuthProvider({ children }) {
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context
+}
+
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [token, setToken] = useState(localStorage.getItem("token"))
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      // Check if user is already logged in on app start
-      const storedUser = localStorage.getItem("web-tether-user")
-      const storedToken = localStorage.getItem("web-tether-token")
-      const onboardingComplete = localStorage.getItem("web-tether-onboarding-complete")
+  // Function to refresh user data from the server
+  const refreshUserData = async () => {
+    if (!user?.id || !token) return
 
-      if (storedUser && storedToken) {
-        const userData = JSON.parse(storedUser)
-
-        try {
-          // Fetch latest user data from database to sync any changes
-          const latestUserData = await userAPI.getUserById(userData.id)
-          const syncedUserData = { ...userData, ...latestUserData }
-
-          setUser(syncedUserData)
-          localStorage.setItem("web-tether-user", JSON.stringify(syncedUserData))
-
-          // Show onboarding if not completed and user just signed up
-          if (!onboardingComplete && syncedUserData.isNewUser) {
-            setShowOnboarding(true)
-          }
-        } catch (error) {
-          console.error("Error syncing user data:", error)
-          // If we can't sync, use stored data but user might need to refresh
-          setUser(userData)
-
-          if (!onboardingComplete && userData.isNewUser) {
-            setShowOnboarding(true)
-          }
-        }
-      }
-      setIsLoading(false)
-    }
-
-    initializeAuth()
-  }, [])
-
-  const login = async (email, password) => {
     try {
-      const data = await authAPI.login(email, password)
-
-      // Fetch the complete user data from the database to ensure we have latest info
-      const completeUserData = await userAPI.getUserById(data.user.id)
-
-      // Merge the login response with complete user data
-      const fullUserData = { ...data.user, ...completeUserData }
-
-      // Store user data and token from the API response
-      setUser(fullUserData)
-      localStorage.setItem("web-tether-user", JSON.stringify(fullUserData))
-      localStorage.setItem("web-tether-token", data.token)
-      return { success: true, data: { ...data, user: fullUserData } }
+      const userData = await api.getUser(user.id)
+      console.log("Refreshed user data:", userData)
+      setUser(userData)
+      debugCloudflareWorkerInfo(userData)
     } catch (error) {
-      return { success: false, error: error.message || "Login failed" }
+      console.error("Failed to refresh user data:", error)
     }
   }
 
-  const signup = async (userData) => {
+  // Function to fetch complete user data after login
+  const fetchCompleteUserData = async (userId) => {
     try {
-      const data = await authAPI.signup(userData)
-
-      // Mark user as new for onboarding
-      const userWithNewFlag = { ...data.user, isNewUser: true }
-
-      // Store user data and token from the API response
-      setUser(userWithNewFlag)
-      localStorage.setItem("web-tether-user", JSON.stringify(userWithNewFlag))
-      localStorage.setItem("web-tether-token", data.session.token)
-
-      // Show onboarding for new users
-      setShowOnboarding(true)
-
-      return { success: true, data }
+      const userData = await api.getUser(userId)
+      console.log("Fetched complete user data:", userData)
+      setUser(userData)
+      debugCloudflareWorkerInfo(userData)
+      return userData
     } catch (error) {
-      return { success: false, error: error.message || "Signup failed" }
+      console.error("Failed to fetch user data:", error)
+      return null
+    }
+  }
+
+  const login = async (email, password) => {
+    try {
+      const response = await api.login(email, password)
+      const { user: userData, token: authToken } = response
+
+      setToken(authToken)
+      localStorage.setItem("token", authToken)
+
+      // Fetch complete user data including agent_url
+      const completeUserData = await fetchCompleteUserData(userData.id)
+
+      return { success: true, user: completeUserData }
+    } catch (error) {
+      console.error("Login failed:", error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  const signup = async (name, email, password, isVisitor = false) => {
+    try {
+      const response = await api.signup(name, email, password, isVisitor)
+      const { user: userData, session } = response
+
+      setToken(session.token)
+      localStorage.setItem("token", session.token)
+
+      // Fetch complete user data including agent_url
+      const completeUserData = await fetchCompleteUserData(userData.id)
+
+      return { success: true, user: completeUserData }
+    } catch (error) {
+      console.error("Signup failed:", error)
+      return { success: false, error: error.message }
     }
   }
 
   const logout = () => {
     setUser(null)
-    setShowOnboarding(false)
-    localStorage.removeItem("web-tether-user")
-    localStorage.removeItem("web-tether-token")
-    localStorage.removeItem("web-tether-onboarding-complete")
+    setToken(null)
+    localStorage.removeItem("token")
   }
 
-  const completeOnboarding = () => {
-    setShowOnboarding(false)
-    localStorage.setItem("web-tether-onboarding-complete", "true")
+  // Initialize auth state on app startup
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const storedToken = localStorage.getItem("token")
+      const storedUser = localStorage.getItem("user")
 
-    // Remove the isNewUser flag
-    if (user) {
-      const updatedUser = { ...user }
-      delete updatedUser.isNewUser
-      setUser(updatedUser)
-      localStorage.setItem("web-tether-user", JSON.stringify(updatedUser))
+      if (storedToken && storedUser) {
+        try {
+          const userData = JSON.parse(storedUser)
+          setToken(storedToken)
+
+          // Refresh user data to ensure it's up to date
+          const refreshedData = await fetchCompleteUserData(userData.id)
+          if (!refreshedData) {
+            // If refresh fails, use stored data
+            setUser(userData)
+          }
+        } catch (error) {
+          console.error("Failed to initialize auth:", error)
+          logout()
+        }
+      }
+      setLoading(false)
     }
-  }
+
+    initializeAuth()
+  }, [])
+
+  // Store user data in localStorage whenever it changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user))
+    } else {
+      localStorage.removeItem("user")
+    }
+  }, [user])
 
   const value = {
     user,
-    setUser,
+    setUser, // Export setUser function
+    token,
+    loading,
     login,
     signup,
     logout,
-    isLoading,
-    showOnboarding,
-    completeOnboarding,
+    refreshUserData,
+    fetchCompleteUserData,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
 }
