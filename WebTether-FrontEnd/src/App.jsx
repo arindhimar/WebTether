@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ThemeProvider } from "./contexts/ThemeContext"
 import { AuthProvider, useAuth } from "./contexts/AuthContext"
 import { Toaster } from "./components/ui/sonner"
@@ -13,7 +13,7 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
   const { user, showOnboarding, completeOnboarding } = useAuth()
 
-  // Show onboarding for new users
+  // Show onboarding for new validators
   if (showOnboarding && user) {
     return <OnboardingFlow onComplete={completeOnboarding} />
   }
@@ -29,9 +29,14 @@ function AppContent() {
   }
 
   // Listen for navigation changes
-  window.addEventListener("popstate", () => {
-    setCurrentPage(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
-  })
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPage(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
+    }
+    
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
 
   return renderPage()
 }

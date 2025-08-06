@@ -17,6 +17,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [token, setToken] = useState(localStorage.getItem("token"))
 
   // Function to refresh user data from the server
@@ -65,16 +66,21 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const signup = async (name, email, password, isVisitor = false) => {
+  const signup = async (signupData) => {
     try {
-      const response = await api.signup(name, email, password, isVisitor)
-      const { user: userData, session } = response
+      const response = await api.signup(signupData)
+      const { user: userData, token: authToken } = response
 
-      setToken(session.token)
-      localStorage.setItem("token", session.token)
+      setToken(authToken)
+      localStorage.setItem("token", authToken)
 
       // Fetch complete user data including agent_url
       const completeUserData = await fetchCompleteUserData(userData.id)
+
+      // Show onboarding for validators
+      if (!signupData.isVisitor) {
+        setShowOnboarding(true)
+      }
 
       return { success: true, user: completeUserData }
     } catch (error) {
@@ -86,7 +92,17 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null)
     setToken(null)
+    setShowOnboarding(false)
     localStorage.removeItem("token")
+    localStorage.removeItem("user")
+    
+    // Redirect to landing page
+    window.location.href = "/"
+  }
+
+  // Add completeOnboarding function
+  const completeOnboarding = () => {
+    setShowOnboarding(false)
   }
 
   // Initialize auth state on app startup
@@ -131,11 +147,13 @@ export const AuthProvider = ({ children }) => {
     setUser, // Export setUser function
     token,
     loading,
+    showOnboarding,
     login,
     signup,
     logout,
     refreshUserData,
     fetchCompleteUserData,
+    completeOnboarding,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

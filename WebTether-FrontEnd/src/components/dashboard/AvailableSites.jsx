@@ -8,9 +8,9 @@ import { useAuth } from "../../contexts/AuthContext"
 import { api } from "../../services/api"
 import { useToast } from "../../hooks/use-toast"
 import { isCloudflareWorkerConfigured } from "../../utils/cloudflareAgent"
-import { Globe, Zap, Clock, MapPin, Cloud, Coins } from "lucide-react"
+import { Globe, Zap, Clock, MapPin, Cloud, Coins } from 'lucide-react'
 
-export default function AvailableSites() {
+export default function AvailableSites({ onPingAccepted }) {
   const { user } = useAuth()
   const { toast } = useToast()
   const [sites, setSites] = useState([])
@@ -90,6 +90,11 @@ export default function AvailableSites() {
           description: "Ping result recorded successfully",
         })
       }
+
+      // Trigger data refresh
+      if (onPingAccepted) {
+        onPingAccepted()
+      }
     } catch (error) {
       console.error("Ping failed:", error)
       toast({
@@ -144,7 +149,7 @@ export default function AvailableSites() {
             </p>
             <Button
               className="bg-orange-500 hover:bg-orange-600"
-              onClick={() => (window.location.href = "/dashboard?tab=settings")}
+              onClick={() => window.location.href = "/dashboard?view=settings"}
             >
               <Cloud className="h-4 w-4 mr-2" />
               Configure Worker

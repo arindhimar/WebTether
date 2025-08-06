@@ -2,18 +2,23 @@
 
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Globe, TrendingUp, Coins, CheckCircle } from "lucide-react"
+import { Globe, TrendingUp, Coins, CheckCircle } from 'lucide-react'
 
 export function StatsOverview({ websites, pings, user }) {
   const totalWebsites = websites.length
-  const averageUptime =
-    websites.length > 0 ? (websites.reduce((sum, site) => sum + site.uptime, 0) / websites.length).toFixed(1) : 0
+  
+  // Calculate average uptime only for websites that have been pinged
+  const websitesWithPings = websites.filter(site => site.pingCount > 0)
+  const averageUptime = websitesWithPings.length > 0 
+    ? (websitesWithPings.reduce((sum, site) => sum + site.uptimeValue, 0) / websitesWithPings.length).toFixed(1)
+    : "No data"
+  
   const activeWebsites = websites.filter((site) => site.status === "up").length
 
   // Validator stats
   const userPings = pings.filter((ping) => ping.uid === user?.id)
   const successfulPings = userPings.filter((ping) => ping.is_up).length
-  const validatorSuccessRate = userPings.length > 0 ? ((successfulPings / userPings.length) * 100).toFixed(1) : 0
+  const validatorSuccessRate = userPings.length > 0 ? ((successfulPings / userPings.length) * 100).toFixed(1) : "0"
 
   const stats = user?.isVisitor
     ? [
@@ -45,7 +50,7 @@ export function StatsOverview({ websites, pings, user }) {
         },
         {
           title: "Average Uptime",
-          value: `${averageUptime}%`,
+          value: averageUptime === "No data" ? averageUptime : `${averageUptime}%`,
           icon: TrendingUp,
           color: "from-green-500 to-emerald-400",
         },

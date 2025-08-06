@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
-import { CheckCircle, XCircle, Clock, TrendingUp, Coins, Zap } from "lucide-react"
+import { CheckCircle, XCircle, Clock, TrendingUp, Coins, Zap } from 'lucide-react'
 
 export function ValidatorActivities({ pings, userId }) {
   const userPings = useMemo(() => {
@@ -16,45 +16,63 @@ export function ValidatorActivities({ pings, userId }) {
     const successfulPings = userPings.filter((ping) => ping.is_up)
     const successRate = userPings.length > 0 ? ((successfulPings.length / userPings.length) * 100).toFixed(1) : 0
     const coinsEarned = userPings.length * 5 // Assuming 5 coins per ping
-    const replitPings = userPings.filter((ping) => ping.replit_used)
+    const cloudflareWorkerPings = userPings.filter((ping) => ping.cloudflare_worker_used)
 
     return {
       todayValidations: todayPings.length,
       successRate,
       coinsEarned,
       totalValidations: userPings.length,
-      replitUsage: userPings.length > 0 ? ((replitPings.length / userPings.length) * 100).toFixed(1) : 0,
+      cloudflareWorkerUsage: userPings.length > 0 ? ((cloudflareWorkerPings.length / userPings.length) * 100).toFixed(1) : 0,
     }
   }, [userPings])
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "Unknown"
+    
+    try {
+      const date = new Date(dateString)
+      const now = new Date()
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "Invalid date"
+      }
+      
+      const diffMs = now - date
+      const diffMins = Math.floor(diffMs / 60000)
+      const diffHours = Math.floor(diffMs / 3600000)
+      const diffDays = Math.floor(diffMs / 86400000)
 
+      if (diffMins < 1) return "Just now"
+      if (diffMins < 60) return `${diffMins}m ago`
+      if (diffHours < 24) return `${diffHours}h ago`
+      if (diffDays < 30) return `${diffDays}d ago`
+      return date.toLocaleDateString()
+    } catch (error) {
+      console.error("Error formatting date:", dateString, error)
+      return "Unknown"
+    }
+  }
   const recentActivities = useMemo(() => {
     return userPings
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 10)
       .map((ping) => ({
         id: ping.pid,
-        url: `Website ${ping.wid}`, // You might want to join with website data
+        wid: ping.wid,
+        url: `Website ${ping.wid}`,
         status: "completed",
         result: ping.is_up ? "up" : "down",
         reward: 5,
         timestamp: formatTimeAgo(ping.created_at),
         latency: ping.latency_ms,
         region: ping.region,
-        replitUsed: ping.replit_used,
+        cloudflareWorkerUsed: ping.cloudflare_worker_used,
+        created_at: ping.created_at // Keep original for debugging
       }))
   }, [userPings])
 
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now - date
-    const diffMins = Math.floor(diffMs / 60000)
 
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`
-    return `${Math.floor(diffMins / 1440)}d ago`
-  }
 
   const getStatusIcon = (status, result) => {
     if (status === "in-progress") return <Clock className="h-4 w-4 text-amber-500" />
@@ -65,7 +83,7 @@ export function ValidatorActivities({ pings, userId }) {
 
   const getStatusBadge = (status, result) => {
     if (status === "in-progress") return <Badge variant="secondary">In Progress</Badge>
-    if (result === "up") return <Badge variant="default">Site Up</Badge>
+    if (result === "up") return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Site Up</Badge>
     if (result === "down") return <Badge variant="destructive">Site Down</Badge>
     return null
   }
@@ -111,12 +129,12 @@ export function ValidatorActivities({ pings, userId }) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Replit Usage</CardTitle>
-            <Zap className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium">Worker Usage</CardTitle>
+            <Zap className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.replitUsage}%</div>
-            <p className="text-xs text-muted-foreground">Agent-powered pings</p>
+            <div className="text-2xl font-bold">{stats.cloudflareWorkerUsage}%</div>
+            <p className="text-xs text-muted-foreground">Cloudflare Worker pings</p>
           </CardContent>
         </Card>
       </div>
@@ -125,7 +143,7 @@ export function ValidatorActivities({ pings, userId }) {
       <Card>
         <CardHeader>
           <CardTitle>Recent Validation Activities</CardTitle>
-          <CardDescription>Your latest website validation results using Replit agents</CardDescription>
+          <CardDescription>Your latest website validation results using Cloudflare Workers</CardDescription>
         </CardHeader>
         <CardContent>
           {recentActivities.length === 0 ? (
@@ -137,16 +155,16 @@ export function ValidatorActivities({ pings, userId }) {
           ) : (
             <div className="space-y-4">
               {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div key={activity.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="flex items-center space-x-4">
                     {getStatusIcon(activity.status, activity.result)}
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-semibold">{activity.url}</h4>
-                        {activity.replitUsed && (
+                        <h4 className="font-semibold">Website ID: {activity.wid}</h4>
+                        {activity.cloudflareWorkerUsed && (
                           <Badge variant="outline" className="text-xs">
                             <Zap className="h-3 w-3 mr-1" />
-                            Replit
+                            Cloudflare
                           </Badge>
                         )}
                       </div>

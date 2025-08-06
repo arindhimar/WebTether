@@ -6,13 +6,13 @@ import { Button } from "../ui/button"
 import { Progress } from "../ui/progress"
 import { useAuth } from "../../contexts/AuthContext"
 import CloudflareWorkerSetup from "./CloudflareWorkerSetup"
-import { CheckCircle, Cloud, Globe, Zap } from "lucide-react"
+import { CheckCircle, Cloud, Globe, Zap } from 'lucide-react'
 
 const ONBOARDING_STEPS = [
   {
     id: "welcome",
     title: "Welcome to WebTether",
-    description: "Get started with website monitoring and validation",
+    description: "Get started as a validator and earn rewards",
   },
   {
     id: "cloudflare-worker",
@@ -22,7 +22,7 @@ const ONBOARDING_STEPS = [
   {
     id: "complete",
     title: "Setup Complete",
-    description: "You're ready to start monitoring websites!",
+    description: "You're ready to start validating websites!",
   },
 ]
 
@@ -53,33 +53,33 @@ export default function OnboardingFlow({ onComplete }) {
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                 <Globe className="h-8 w-8 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Welcome to WebTether!</h2>
+              <h2 className="text-2xl font-bold mb-2">Welcome to WebTether, Validator!</h2>
               <p className="text-muted-foreground">
-                Join our decentralized network of website validators and earn rewards for monitoring websites.
+                As a validator, you'll earn rewards for monitoring websites using your own Cloudflare Worker.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-4 border rounded-lg">
                 <Cloud className="h-8 w-8 text-orange-500 mx-auto mb-2" />
-                <h3 className="font-semibold mb-1">Your Worker</h3>
-                <p className="text-sm text-muted-foreground">Deploy your own Cloudflare Worker to ping websites</p>
+                <h3 className="font-semibold mb-1">Deploy Worker</h3>
+                <p className="text-sm text-muted-foreground">Set up your Cloudflare Worker to ping websites</p>
               </div>
               <div className="text-center p-4 border rounded-lg">
                 <Zap className="h-8 w-8 text-blue-500 mx-auto mb-2" />
                 <h3 className="font-semibold mb-1">Earn Rewards</h3>
-                <p className="text-sm text-muted-foreground">Get points for every successful website ping</p>
+                <p className="text-sm text-muted-foreground">Get 5 points for every successful website ping</p>
               </div>
               <div className="text-center p-4 border rounded-lg">
                 <Globe className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                <h3 className="font-semibold mb-1">Global Network</h3>
+                <h3 className="font-semibold mb-1">Global Impact</h3>
                 <p className="text-sm text-muted-foreground">Help monitor websites from your location</p>
               </div>
             </div>
 
             <div className="flex gap-2">
               <Button onClick={handleNext} className="flex-1">
-                Get Started
+                Setup Cloudflare Worker
               </Button>
               <Button variant="outline" onClick={handleSkip}>
                 Skip Setup
@@ -98,8 +98,10 @@ export default function OnboardingFlow({ onComplete }) {
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Setup Complete!</h2>
-              <p className="text-muted-foreground">You're all set to start monitoring websites and earning rewards.</p>
+              <h2 className="text-2xl font-bold mb-2">You're All Set!</h2>
+              <p className="text-muted-foreground">
+                Your validator account is ready. Start earning rewards by pinging websites!
+              </p>
             </div>
 
             <div className="space-y-4">
@@ -107,9 +109,9 @@ export default function OnboardingFlow({ onComplete }) {
                 <h3 className="font-semibold text-green-800 mb-2">What's Next?</h3>
                 <ul className="space-y-1 text-sm text-green-700">
                   <li>• Browse available websites to ping</li>
-                  <li>• Add your own websites for monitoring</li>
-                  <li>• Earn points for successful pings</li>
-                  <li>• View your ping history and statistics</li>
+                  <li>• Earn 5 points for each successful ping</li>
+                  <li>• View your validation statistics</li>
+                  <li>• Configure additional settings if needed</li>
                 </ul>
               </div>
 
@@ -119,7 +121,7 @@ export default function OnboardingFlow({ onComplete }) {
                   <p className="text-sm text-blue-700">
                     <code className="bg-blue-100 px-1 rounded">{user.agent_url}</code>
                   </p>
-                  <p className="text-xs text-blue-600 mt-1">Your worker is configured and ready to ping websites!</p>
+                  <p className="text-xs text-blue-600 mt-1">Ready to ping websites and earn rewards!</p>
                 </div>
               )}
             </div>

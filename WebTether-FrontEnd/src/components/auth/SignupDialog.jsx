@@ -9,7 +9,7 @@ import { Checkbox } from "../ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../hooks/use-toast"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Loader2, Eye, EyeOff } from 'lucide-react'
 
 export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
@@ -79,6 +79,11 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
         isVisitor: false,
         secret_key: "",
       })
+      
+      // If user wants to be a validator, show onboarding
+      if (formData.isVisitor) {
+        // The onboarding will be handled by the AuthContext
+      }
     } else {
       toast({
         title: "Signup Failed",

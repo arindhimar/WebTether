@@ -9,7 +9,7 @@ ping_controller = Blueprint("ping_controller", __name__)
 ping_model = PingModel()
 user_model = UserModel()
 
-@ping_controller.route('/pings', methods=['POST'])
+@ping_controller.route('/', methods=['POST'])
 def create_ping():
     data = request.json
     res = ping_model.create_ping(
@@ -21,25 +21,25 @@ def create_ping():
     )
     return jsonify(res.data), 201
 
-@ping_controller.route('/pings', methods=['GET'])
+@ping_controller.route('/', methods=['GET'])
 def list_pings():
     return jsonify(ping_model.get_all_pings().data), 200
 
-@ping_controller.route('/pings/<int:pid>', methods=['GET'])
+@ping_controller.route('/<int:pid>', methods=['GET'])
 def get_ping(pid):
     return jsonify(ping_model.get_ping_by_id(pid).data), 200
 
-@ping_controller.route('/pings/<int:pid>', methods=['PUT'])
+@ping_controller.route('/<int:pid>', methods=['PUT'])
 def update_ping(pid):
     data = request.json
     return jsonify(ping_model.update_ping(pid, data).data), 200
 
-@ping_controller.route('/pings/<int:pid>', methods=['DELETE'])
+@ping_controller.route('/<int:pid>', methods=['DELETE'])
 def delete_ping(pid):
     ping_model.delete_ping(pid)
     return jsonify({"message": "Deleted"}), 200
 
-@ping_controller.route('/pings/manual', methods=['POST'])
+@ping_controller.route('/manual', methods=['POST'])
 def manual_ping():
     try:
         # Get JWT token from Authorization header
@@ -83,8 +83,16 @@ def manual_ping():
             if worker_response.status_code != 200:
                 return jsonify({"error": f"Worker returned status {worker_response.status_code}"}), 500
                 
+            # Validate Cloudflare origin
+            if worker_response.headers.get("x-agent") != "cloudflare-worker-v1":
+                return jsonify({"error": "Invalid or untrusted ping source"}), 403
+
             result = worker_response.json()
-            
+            if result.get("ping_source") != "cloudflare-worker":
+                return jsonify({"error": "Ping source mismatch in response"}), 403
+            # else:
+            #     print("Lol ping source is cloudflare worker as expected")
+                
             # Save ping result to database
             ping_model.create_ping(
                 wid=wid,
@@ -93,6 +101,7 @@ def manual_ping():
                 region=result.get("region", "cloudflare-edge"),
                 uid=uid
             )
+
 
             return jsonify({
                 "status": "recorded",

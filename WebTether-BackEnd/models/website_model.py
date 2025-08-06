@@ -28,3 +28,7 @@ class WebsiteModel:
 
     def delete_website(self, wid):
         return self.supabase.table("website").delete().eq("wid", wid).execute()
+
+    def get_available_sites_for_user(self, current_uid):
+        """Get all websites that are not owned by the current user"""
+        return self.supabase.table("website").select("*").neq("uid", current_uid).execute()
