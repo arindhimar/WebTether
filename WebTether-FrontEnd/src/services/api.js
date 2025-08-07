@@ -1,133 +1,150 @@
-import axios from "axios"
-
-const API_BASE_URL = "http://localhost:5000"
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
 
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL
-  }
-
-  async get(endpoint, options = {}) {
-    return this.request(endpoint, { method: "GET", ...options })
-  }
-
-  async post(endpoint, body, options = {}) {
-    return this.request(endpoint, { method: "POST", body: JSON.stringify(body), ...options })
-  }
-
-  async put(endpoint, body, options = {}) {
-    return this.request(endpoint, { method: "PUT", body: JSON.stringify(body), ...options })
-  }
-
-  async delete(endpoint, options = {}) {
-    return this.request(endpoint, { method: "DELETE", ...options })
+    this.baseURL = API_BASE_URL;
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`
+    const url = `${this.baseURL}${endpoint}`;
     const config = {
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         ...options.headers,
       },
       ...options,
-    }
+    };
 
     // Add auth token if available
-    const token = localStorage.getItem("token")
+    const token = localStorage.getItem('token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
 
     try {
-      const response = await fetch(url, config)
+      const response = await fetch(url, config);
+      const data = await response.json();
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
 
-      return await response.json()
+      return data;
     } catch (error) {
-      console.error("API request failed:", error)
-      throw error
+      console.error('API request failed:', error);
+      throw error;
     }
+  }
+
+  async get(endpoint) {
+    return this.request(endpoint, { method: 'GET' });
+  }
+
+  async post(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async put(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async delete(endpoint) {
+    return this.request(endpoint, { method: 'DELETE' });
   }
 
   // Auth endpoints
   async login(email, password) {
-    return this.request("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    })
+    return this.post('/auth/login', { email, password });
   }
 
-  async signup(signupData) {
-    return this.request("/auth/signup", {
-      method: "POST",
-      body: JSON.stringify(signupData),
-    })
+  async signup(userData) {
+    return this.post('/auth/signup', userData);
+  }
+
+  async logout() {
+    return this.post('/auth/logout', {});
   }
 
   // User endpoints
   async getUser(userId) {
-    return this.request(`/users/${userId}`)
+    return this.get(`/users/${userId}`);
   }
 
   async updateUser(userId, data) {
-    return this.request(`/users/${userId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    })
+    return this.put(`/users/${userId}`, data);
   }
 
   // Website endpoints
   async getWebsites() {
-    return this.request("/websites/website/")
+    return this.get('/websites/website/');
   }
 
   async getAvailableSites() {
-    return this.request("/websites/available-sites")
+    return this.get('/websites/available-sites');
   }
 
   async createWebsite(url, uid, category) {
-    return this.request("/websites/website", {
-      method: "POST",
-      body: JSON.stringify({ url, uid, category }),
-    })
+    return this.post('/websites/website', { url, uid, category });
   }
 
   async deleteWebsite(wid) {
-    return this.request(`/websites/website/${wid}`, {
-      method: "DELETE",
-    })
+    return this.delete(`/websites/website/${wid}`);
   }
 
   // Ping endpoints
-  async manualPing(wid, uid, url) {
-    return this.request("/pings/manual", {
-      method: "POST",
-      body: JSON.stringify({ wid, uid, url }),
-    })
-  }
-
   async getPings() {
-    return this.request("/pings")
+    return this.get('/pings');
+  }
+
+  /**
+   * Submit a simulated ping with fake transaction code
+   * @param {Object} params - Ping parameters
+   * @param {number} params.wid - Website ID
+   * @param {string} params.url - Website URL
+   * @param {string} params.tx_hash - Fake transaction code (TX-001, TX-002, etc.)
+   */
+  async manualPing({ wid, url, tx_hash }) {
+    return this.post('/pings/manual', {
+      wid,
+      url,
+      tx_hash
+    });
+  }
+
+  // Wallet endpoints
+  async getWalletBalance() {
+    return this.get('/pings/wallet/balance');
+  }
+
+  async getTransactionHistory() {
+    return this.get('/pings/wallet/transactions');
+  }
+
+  // Network status
+  async getNetworkStatus() {
+    return this.get('/pings/network/status');
   }
 }
 
-export const api = new ApiService()
+export const api = new ApiService();
 
+// Legacy exports for backward compatibility
 export const pingAPI = {
-  getAllPings: () => api.get("/pings/"),
-  createPing: (data) => api.post("/pings/", data),
-  manualPing: (wid, uid, url) => api.post("/pings/manual", { wid, uid, url }),
-}
+  getAllPings: () => api.getPings(),
+  createPing: (data) => api.post('/pings/', data),
+  manualPing: (params) => api.manualPing(params),
+};
 
 export const websiteAPI = {
-  getAllWebsites: () => api.get("/websites/website"),
-  getAvailableSites: () => api.get("/websites/available-sites"),
-  createWebsite: (url, uid, category) => api.post("/websites/website", { url, uid, category }),
+  getAllWebsites: () => api.getWebsites(),
+  getAvailableSites: () => api.getAvailableSites(),
+  createWebsite: (url, uid, category) => api.createWebsite(url, uid, category),
   updateWebsite: (wid, data) => api.put(`/websites/${wid}`, data),
-  deleteWebsite: (wid) => api.delete(`/websites/${wid}`),
-}
+  deleteWebsite: (wid) => api.deleteWebsite(wid),
+};
