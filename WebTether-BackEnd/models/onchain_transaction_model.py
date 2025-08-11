@@ -41,10 +41,18 @@ class OnChainTransactionModel:
 
     def get_transactions_by_user(self, uid):
         """
-        Retrieves all transactions initiated by a specific user.
+        Return a list of on-chain transactions for a given user id.
+        This method is defensive: it accepts either an int, a numeric-string,
+        or a dict that contains user_id/id. If uid cannot be parsed to int, it
+        returns an empty list.
         """
-        response = self.supabase.table("onchain_transactions") \
-            .select("*") \
-            .eq("uid", uid) \
-            .execute()
-        return response.data
+        if isinstance(uid, dict):
+            uid = uid.get("user_id") or uid.get("id") or uid.get("uid")
+
+        try:
+            uid_int = int(uid)
+        except (TypeError, ValueError):
+            return []
+
+        resp = self.supabase.table("onchain_transactions").select("*").eq("uid", uid_int).execute()
+        return resp.data or []

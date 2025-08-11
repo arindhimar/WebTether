@@ -1,105 +1,117 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000"
 
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = API_BASE_URL
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+    const url = `${this.baseURL}${endpoint}`
     const config = {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
       ...options,
-    };
+    }
 
     // Add auth token if available
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token")
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`
     }
 
     try {
-      const response = await fetch(url, config);
-      const data = await response.json();
+      const response = await fetch(url, config)
+      const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        throw new Error(data.error || `HTTP error! status: ${response.status}`)
       }
 
-      return data;
+      return data
     } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
+      console.error("API request failed:", error)
+      throw error
     }
   }
 
   async get(endpoint) {
-    return this.request(endpoint, { method: 'GET' });
+    return this.request(endpoint, { method: "GET" })
   }
 
   async post(endpoint, data) {
     return this.request(endpoint, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
-    });
+    })
   }
 
   async put(endpoint, data) {
     return this.request(endpoint, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
-    });
+    })
   }
 
   async delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
+    return this.request(endpoint, { method: "DELETE" })
   }
 
-  // Auth endpoints
+  // Updated auth endpoints to match new API format
   async login(email, password) {
-    return this.post('/auth/login', { email, password });
+    return this.post("/auth/login", { email, password })
   }
 
   async signup(userData) {
-    return this.post('/auth/signup', userData);
+    return this.post("/auth/signup", userData)
   }
 
   async logout() {
-    return this.post('/auth/logout', {});
+    return this.post("/auth/logout", {})
   }
 
   // User endpoints
   async getUser(userId) {
-    return this.get(`/users/${userId}`);
+    return this.get(`/users/${userId}`)
   }
 
   async updateUser(userId, data) {
-    return this.put(`/users/${userId}`, data);
+    return this.put(`/users/${userId}`, data)
   }
 
   // Website endpoints
   async getWebsites() {
-    return this.get('/websites/website/');
+    return this.get("/websites/")
+  }
+
+  async getWebsiteById(wid) {
+    return this.get(`/websites/${wid}`)
   }
 
   async getAvailableSites() {
-    return this.get('/websites/available-sites');
+    return this.get("/websites/available-sites")
   }
 
-  async createWebsite(url, uid, category) {
-    return this.post('/websites/website', { url, uid, category });
+  async getMySites() {
+    return this.get("/websites/my-sites")
+  }
+
+  async createWebsite(url, category) {
+    return this.post("/websites/", { url, category })
+  }
+
+  async updateWebsite(wid, data) {
+    return this.put(`/websites/${wid}`, data)
   }
 
   async deleteWebsite(wid) {
-    return this.delete(`/websites/website/${wid}`);
+    return this.delete(`/website/${wid}`)
   }
 
   // Ping endpoints
   async getPings() {
-    return this.get('/pings');
+    return this.get("/pings/")
   }
 
   /**
@@ -110,41 +122,52 @@ class ApiService {
    * @param {string} params.tx_hash - Fake transaction code (TX-001, TX-002, etc.)
    */
   async manualPing({ wid, url, tx_hash }) {
-    return this.post('/pings/manual', {
+    return this.post("/pings/manual", {
       wid,
       url,
-      tx_hash
-    });
+      tx_hash,
+    })
   }
 
   // Wallet endpoints
   async getWalletBalance() {
-    return this.get('/pings/wallet/balance');
+    return this.get("/pings/wallet/balance")
   }
 
   async getTransactionHistory() {
-    return this.get('/pings/wallet/transactions');
+    return this.get("/pings/wallet/transactions")
   }
 
   // Network status
   async getNetworkStatus() {
-    return this.get('/pings/network/status');
+    return this.get("/pings/network/status")
   }
 }
 
-export const api = new ApiService();
+export const api = new ApiService()
 
 // Legacy exports for backward compatibility
 export const pingAPI = {
   getAllPings: () => api.getPings(),
-  createPing: (data) => api.post('/pings/', data),
+  createPing: (data) => api.post("/pings/", data),
   manualPing: (params) => api.manualPing(params),
-};
+}
 
 export const websiteAPI = {
   getAllWebsites: () => api.getWebsites(),
+  getWebsiteById: (wid) => api.getWebsiteById(wid),
   getAvailableSites: () => api.getAvailableSites(),
-  createWebsite: (url, uid, category) => api.createWebsite(url, uid, category),
-  updateWebsite: (wid, data) => api.put(`/websites/${wid}`, data),
+  getMySites: () => api.getMySites(),
+  createWebsite: (url, category) => api.createWebsite(url, category),
+  updateWebsite: (wid, data) => api.updateWebsite(wid, data),
   deleteWebsite: (wid) => api.deleteWebsite(wid),
-};
+}
+
+// Added userAPI export for compatibility
+export const userAPI = {
+  getUser: (userId) => api.getUser(userId),
+  updateUser: (userId, data) => api.updateUser(userId, data),
+  login: (email, password) => api.login(email, password),
+  signup: (userData) => api.signup(userData),
+  logout: () => api.logout(),
+}

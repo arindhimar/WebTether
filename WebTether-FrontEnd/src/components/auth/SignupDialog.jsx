@@ -9,7 +9,7 @@ import { Checkbox } from "../ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../hooks/use-toast"
-import { Loader2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from "lucide-react"
 
 export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
@@ -18,7 +18,7 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
     password: "",
     confirmPassword: "",
     isVisitor: false,
-    secret_key: "",
+    wallet_address: "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -58,9 +58,8 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
       name: formData.name,
       email: formData.email,
       password: formData.password,
+      ...(formData.wallet_address && { wallet_address: formData.wallet_address }),
       isVisitor: formData.isVisitor,
-      secret_key: formData.secret_key || "web-tether-default-key",
-      cloudflare_worker_url: null,      
     }
 
     const result = await signup(signupData)
@@ -77,12 +76,10 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
         password: "",
         confirmPassword: "",
         isVisitor: false,
-        secret_key: "",
+        wallet_address: "",
       })
-      
-      // If user wants to be a validator, show onboarding
+
       if (formData.isVisitor) {
-        // The onboarding will be handled by the AuthContext
       }
     } else {
       toast({
@@ -197,19 +194,17 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="secret_key">Secret Key (Optional)</Label>
+            <Label htmlFor="wallet_address">Wallet Address (Optional)</Label>
             <Input
-              id="secret_key"
-              name="secret_key"
+              id="wallet_address"
+              name="wallet_address"
               type="text"
-              placeholder="Enter your secret key (optional)"
-              value={formData.secret_key}
+              placeholder="0x... (optional - defaults to all zeros)"
+              value={formData.wallet_address}
               onChange={handleInputChange}
               disabled={isLoading}
             />
-            <p className="text-xs text-muted-foreground">
-              Leave empty to use default key. This is used for additional security.
-            </p>
+            <p className="text-xs text-muted-foreground">Leave empty to use default wallet address (all zeros).</p>
           </div>
 
           <div className="flex items-center space-x-2">

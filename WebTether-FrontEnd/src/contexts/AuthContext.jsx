@@ -51,13 +51,13 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await api.login(email, password)
-      const { user: userData, token: authToken } = response
+      const { user_id, email: userEmail, token } = response
 
-      setToken(authToken)
-      localStorage.setItem("token", authToken)
+      setToken(token)
+      localStorage.setItem("token", token)
 
-      // Fetch complete user data including agent_url
-      const completeUserData = await fetchCompleteUserData(userData.id)
+      // Fetch complete user data using the user_id
+      const completeUserData = await fetchCompleteUserData(user_id)
 
       return { success: true, user: completeUserData }
     } catch (error) {
@@ -69,16 +69,16 @@ export const AuthProvider = ({ children }) => {
   const signup = async (signupData) => {
     try {
       const response = await api.signup(signupData)
-      const { user: userData, token: authToken } = response
+      const { user_id, email, token } = response
 
-      setToken(authToken)
-      localStorage.setItem("token", authToken)
+      setToken(token)
+      localStorage.setItem("token", token)
 
-      // Fetch complete user data including agent_url
-      const completeUserData = await fetchCompleteUserData(userData.id)
+      // Fetch complete user data using the user_id
+      const completeUserData = await fetchCompleteUserData(user_id)
 
-      // Show onboarding for validators
-      if (!signupData.isVisitor) {
+      // Show onboarding for validators (if they have isVisitor flag)
+      if (signupData.isVisitor) {
         setShowOnboarding(true)
       }
 
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }) => {
     setShowOnboarding(false)
     localStorage.removeItem("token")
     localStorage.removeItem("user")
-    
+
     // Redirect to landing page
     window.location.href = "/"
   }
