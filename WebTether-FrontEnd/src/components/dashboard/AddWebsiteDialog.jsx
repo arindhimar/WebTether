@@ -1,330 +1,329 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "framer-motion"
+import { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { Badge } from "../ui/badge"
+import { Plus, Globe, Coins, RefreshCw, Copy, Check } from "lucide-react"
 import { useToast } from "../../hooks/use-toast"
-import { useAuth } from "../../contexts/AuthContext"
-import { websiteAPI } from "../../services/api"
-import { Loader2, Globe, AlertCircle, CheckCircle } from 'lucide-react'
+import { api } from "../../services/api"
 
-/**
- * Add Website Dialog Component
- * 
- * This component provides a modal dialog for website owners to add new websites
- * for monitoring. It handles form validation, URL verification, and API communication.
- * 
- * Features:
- * - URL validation and formatting
- * - Category selection (optional)
- * - Real-time form validation
- * - Error handling with user-friendly messages
- * - Loading states and feedback
- * 
- * @author Web-Tether Team
- * @version 1.0.0
- */
+const WEBSITE_CATEGORIES = [
+  { value: "ecommerce", label: "E-commerce", icon: "🛒" },
+  { value: "blog", label: "Blog/News", icon: "📰" },
+  { value: "portfolio", label: "Portfolio", icon: "💼" },
+  { value: "business", label: "Business", icon: "🏢" },
+  { value: "social", label: "Social Media", icon: "📱" },
+  { value: "education", label: "Education", icon: "🎓" },
+  { value: "entertainment", label: "Entertainment", icon: "🎬" },
+  { value: "other", label: "Other", icon: "🌐" },
+]
 
-export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
-  // ==================== STATE MANAGEMENT ====================
-  
+const generateTransactionCode = () => {
+  const prefix = "TX"
+  const timestamp = Date.now().toString().slice(-6)
+  const random = Math.random().toString(36).substring(2, 5).toUpperCase()
+  return `${prefix}-${timestamp}-${random}`
+}
+
+export function AddWebsiteDialog({ onWebsiteAdded, trigger }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     url: "",
     category: "",
+    txHash: "",
+    feePaid: "0.001",
   })
-  const [isLoading, setIsLoading] = useState(false)
-  const [urlError, setUrlError] = useState("")
-  
-  // ==================== HOOKS ====================
-  
-  const { user } = useAuth()
+  const [availableTxCodes, setAvailableTxCodes] = useState([])
+  const [copiedCode, setCopiedCode] = useState("")
   const { toast } = useToast()
 
-  // ==================== VALIDATION FUNCTIONS ====================
-
-  /**
-   * Validate and format URL input
-   * @param {string} url - Raw URL input
-   * @returns {Object} Validation result with isValid flag and formatted URL
-   */
-  const validateAndFormatUrl = (url) => {
-    if (!url || url.trim().length === 0) {
-      return { isValid: false, error: "URL is required", formattedUrl: "" };
+  // Load saved transaction codes from localStorage
+  useEffect(() => {
+    const savedCodes = JSON.parse(localStorage.getItem("transactionCodes") || "[]")
+    if (savedCodes.length === 0) {
+      // Generate initial codes if none exist
+      const initialCodes = Array.from({ length: 3 }, () => generateTransactionCode())
+      setAvailableTxCodes(initialCodes)
+      localStorage.setItem("transactionCodes", JSON.stringify(initialCodes))
+    } else {
+      setAvailableTxCodes(savedCodes)
     }
+  }, [])
 
-    let formattedUrl = url.trim();
-    
-    // Add protocol if missing
-    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
-      formattedUrl = 'https://' + formattedUrl;
-    }
+  const handleGenerateNewCode = () => {
+    const newCode = generateTransactionCode()
+    const updatedCodes = [...availableTxCodes, newCode]
+    setAvailableTxCodes(updatedCodes)
+    localStorage.setItem("transactionCodes", JSON.stringify(updatedCodes))
+    setFormData({ ...formData, txHash: newCode })
+    toast({
+      title: "Success",
+      description: "New transaction code generated!",
+    })
+  }
 
+  const handleCopyCode = async (code) => {
     try {
-      const urlObj = new URL(formattedUrl);
-      
-      // Basic validation checks
-      if (!urlObj.hostname || urlObj.hostname.length < 3) {
-        return { isValid: false, error: "Invalid domain name", formattedUrl };
-      }
-
-      if (!urlObj.hostname.includes('.')) {
-        return { isValid: false, error: "Domain must include a top-level domain (e.g., .com)", formattedUrl };
-      }
-
-      return { isValid: true, error: "", formattedUrl };
+      await navigator.clipboard.writeText(code)
+      setCopiedCode(code)
+      toast({
+        title: "Copied",
+        description: "Transaction code copied to clipboard!",
+      })
+      setTimeout(() => setCopiedCode(""), 2000)
     } catch (error) {
-      return { isValid: false, error: "Please enter a valid URL (e.g., https://example.com)", formattedUrl };
+      toast({
+        title: "Error",
+        description: "Failed to copy code",
+        variant: "destructive",
+      })
     }
   }
 
-  /**
-   * Validate category input
-   * @param {string} category - Category input
-   * @returns {Object} Validation result
-   */
-  const validateCategory = (category) => {
-    if (!category) return { isValid: true, error: "" }; // Optional field
-    
-    if (category.length > 50) {
-      return { isValid: false, error: "Category must be less than 50 characters" };
-    }
-
-    return { isValid: true, error: "" };
-  }
-
-  // ==================== EVENT HANDLERS ====================
-
-  /**
-   * Handle URL input change with real-time validation
-   * @param {Event} e - Input change event
-   */
-  const handleUrlChange = (e) => {
-    const newUrl = e.target.value;
-    setFormData(prev => ({ ...prev, url: newUrl }));
-    
-    // Clear previous error
-    setUrlError("");
-    
-    // Validate if user has typed something
-    if (newUrl.trim().length > 0) {
-      const validation = validateAndFormatUrl(newUrl);
-      if (!validation.isValid) {
-        setUrlError(validation.error);
-      }
+  const validateUrl = (url) => {
+    try {
+      const urlObj = new URL(url.startsWith("http") ? url : `https://${url}`)
+      return urlObj.protocol === "http:" || urlObj.protocol === "https:"
+    } catch {
+      return false
     }
   }
 
-  /**
-   * Handle category input change
-   * @param {Event} e - Input change event
-   */
-  const handleCategoryChange = (e) => {
-    const newCategory = e.target.value;
-    setFormData(prev => ({ ...prev, category: newCategory }));
-  }
-
-  /**
-   * Handle form submission
-   * @param {Event} e - Form submit event
-   */
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validate all fields
-    const urlValidation = validateAndFormatUrl(formData.url);
-    const categoryValidation = validateCategory(formData.category);
+    e.preventDefault()
 
-    if (!urlValidation.isValid) {
-      setUrlError(urlValidation.error);
+    if (!formData.url.trim()) {
       toast({
-        title: "Invalid URL",
-        description: urlValidation.error,
+        title: "Error",
+        description: "Please enter a website URL",
         variant: "destructive",
-      });
-      return;
+      })
+      return
     }
 
-    if (!categoryValidation.isValid) {
+    if (!validateUrl(formData.url)) {
       toast({
-        title: "Invalid Category",
-        description: categoryValidation.error,
+        title: "Error",
+        description: "Please enter a valid URL",
         variant: "destructive",
-      });
-      return;
+      })
+      return
     }
 
-    setIsLoading(true);
+    if (!formData.category) {
+      toast({
+        title: "Error",
+        description: "Please select a category",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.txHash) {
+      toast({
+        title: "Error",
+        description: "Please select a transaction code",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoading(true)
 
     try {
-      // Create website using the formatted URL
-      const response = await websiteAPI.createWebsite(
-        urlValidation.formattedUrl,
-        user.id,
-        formData.category || null
-      );
-
-      // Success feedback
-      toast({
-        title: "Website Added Successfully!",
-        description: (
-          <div className="space-y-1">
-            <p><strong>URL:</strong> {urlValidation.formattedUrl}</p>
-            {formData.category && <p><strong>Category:</strong> {formData.category}</p>}
-            <p>Your website is now being monitored by our validator network!</p>
-          </div>
-        ),
-      });
-
-      // Reset form and close dialog
-      setFormData({ url: "", category: "" });
-      setUrlError("");
-      onOpenChange(false);
-
-      // Trigger refresh of dashboard data
-      if (onWebsiteAdded) {
-        onWebsiteAdded();
+      const websiteData = {
+        url: formData.url.startsWith("http") ? formData.url : `https://${formData.url}`,
+        category: formData.category,
+        tx_hash: formData.txHash,
+        fee_paid_numeric: Number.parseFloat(formData.feePaid),
       }
 
-    } catch (error) {
-      console.error("Error adding website:", error);
-      
-      // Show user-friendly error message
+      const response = await api.createWebsite(websiteData)
+
       toast({
-        title: "Failed to Add Website",
-        description: error.message,
+        title: "Success! 🎉",
+        description: "Website added successfully!",
+      })
+
+      if (onWebsiteAdded) {
+        onWebsiteAdded(response)
+      }
+
+      // Reset form
+      setFormData({
+        url: "",
+        category: "",
+        txHash: "",
+        feePaid: "0.001",
+      })
+
+      setOpen(false)
+    } catch (error) {
+      console.error("Error adding website:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add website",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsLoading(false);
+      setLoading(false)
     }
   }
 
-  /**
-   * Handle dialog close - reset form state
-   */
-  const handleDialogClose = (open) => {
-    if (!open && !isLoading) {
-      setFormData({ url: "", category: "" });
-      setUrlError("");
-    }
-    onOpenChange(open);
-  }
-
-  // ==================== RENDER ====================
+  const selectedCategory = WEBSITE_CATEGORIES.find((cat) => cat.value === formData.category)
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || (
+          <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Website
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-2 text-card-foreground">
+            <Globe className="w-5 h-5 text-purple-600" />
             Add New Website
           </DialogTitle>
-          <DialogDescription>
-            Add a website to monitor its uptime with our validator network. 
-            Validators will earn rewards for checking your site 24/7.
+          <DialogDescription className="text-muted-foreground">
+            Add a website to start monitoring its uptime and earn rewards
           </DialogDescription>
         </DialogHeader>
 
-        <motion.form
-          onSubmit={handleSubmit}
-          className="space-y-4 mt-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* How It Works Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-blue-800">How Website Monitoring Works</p>
-                <p className="text-blue-700">
-                  Add your website and our global validator network will monitor it 24/7. 
-                  You'll receive detailed uptime reports and instant alerts.
-                </p>
-              </div>
-            </div>
-          </div>
-
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* URL Input */}
           <div className="space-y-2">
-            <Label htmlFor="url">Website URL *</Label>
+            <Label htmlFor="url" className="text-card-foreground">
+              Website URL
+            </Label>
             <Input
               id="url"
               type="url"
               placeholder="https://example.com"
               value={formData.url}
-              onChange={handleUrlChange}
-              required
-              disabled={isLoading}
-              className={urlError ? "border-red-500 focus:border-red-500" : ""}
+              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              className="bg-background border-input text-foreground"
             />
-            {urlError && (
-              <div className="flex items-center gap-1 text-sm text-red-600">
-                <AlertCircle className="h-3 w-3" />
-                <span>{urlError}</span>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Enter the full URL including https:// (we'll add it if missing)
-            </p>
           </div>
 
-          {/* Category Input */}
+          {/* Category Selection */}
           <div className="space-y-2">
-            <Label htmlFor="category">Category (Optional)</Label>
-            <Input
-              id="category"
-              placeholder="e.g., E-commerce, Blog, API, Portfolio"
-              value={formData.category}
-              onChange={handleCategoryChange}
-              disabled={isLoading}
-              maxLength={50}
-            />
-            <p className="text-xs text-muted-foreground">
-              Help organize your websites by category (max 50 characters)
-            </p>
+            <Label className="text-card-foreground">Category</Label>
+            <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+              <SelectTrigger className="bg-background border-input text-foreground">
+                <SelectValue placeholder="Select category">
+                  {selectedCategory && (
+                    <div className="flex items-center gap-2">
+                      <span>{selectedCategory.icon}</span>
+                      <span>{selectedCategory.label}</span>
+                    </div>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border">
+                {WEBSITE_CATEGORIES.map((category) => (
+                  <SelectItem key={category.value} value={category.value} className="text-popover-foreground">
+                    <div className="flex items-center gap-2">
+                      <span>{category.icon}</span>
+                      <span>{category.label}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Transaction Code Selection */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-card-foreground">Transaction Code</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateNewCode}
+                className="text-xs bg-transparent"
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Generate New
+              </Button>
+            </div>
+            <Select value={formData.txHash} onValueChange={(value) => setFormData({ ...formData, txHash: value })}>
+              <SelectTrigger className="bg-background border-input text-foreground">
+                <SelectValue placeholder="Select transaction code" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border">
+                {availableTxCodes.map((code) => (
+                  <SelectItem key={code} value={code} className="text-popover-foreground">
+                    <div className="flex items-center justify-between w-full">
+                      <span className="font-mono text-sm">{code}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleCopyCode(code)
+                        }}
+                        className="ml-2 h-6 w-6 p-0"
+                      >
+                        {copiedCode === code ? (
+                          <Check className="w-3 h-3 text-green-600" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </Button>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Fee Display */}
+          <div className="space-y-2">
+            <Label className="text-card-foreground">Registration Fee</Label>
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Coins className="w-4 h-4 text-yellow-600" />
+              <span className="font-mono text-sm text-muted-foreground">{formData.feePaid} ETH</span>
+              <Badge variant="secondary" className="ml-auto">
+                One-time
+              </Badge>
+            </div>
           </div>
 
           {/* Submit Button */}
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-            disabled={isLoading || !!urlError}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding Website...
-              </>
-            ) : (
-              <>
-                <Globe className="mr-2 h-4 w-4" />
-                Add Website for Monitoring
-              </>
-            )}
-          </Button>
-
-          {/* Educational Notice */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-green-500 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-green-800">What happens next:</p>
-                <ul className="text-green-700 text-xs mt-1 space-y-1">
-                  <li>• Your website will be added to our monitoring network</li>
-                  <li>• Validators will start checking your site every few minutes</li>
-                  <li>• You'll see real-time uptime data in your dashboard</li>
-                  <li>• You can delete your website anytime to stop monitoring</li>
-                </ul>
-              </div>
-            </div>
+          <div className="flex gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Website
+                </>
+              )}
+            </Button>
           </div>
-        </motion.form>
+        </form>
       </DialogContent>
     </Dialog>
   )

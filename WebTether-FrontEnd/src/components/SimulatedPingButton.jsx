@@ -1,348 +1,309 @@
-/**
- * Simulated Ping Button Component
- * 
- * This component allows validators to simulate pinging websites and earning rewards.
- * It provides an educational interface for testing the Web-Tether validation system
- * without requiring real blockchain transactions.
- * 
- * Features:
- * - Transaction code selection from predefined list
- * - Real website pinging through Cloudflare Workers
- * - Reward simulation and tracking
- * - Detailed result display with metrics
- * - Error handling and user feedback
- * 
- * @author Web-Tether Team
- * @version 1.0.0
- */
+"use client"
 
-import { useState } from 'react';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { TestTube, Zap, Clock, Globe, AlertCircle, Coins, CheckCircle, XCircle } from 'lucide-react';
-import { api } from '../services/api';
+import { useState, useEffect } from "react"
+import { Button } from "./ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { Label } from "./ui/label"
+import { Zap, Settings, RefreshCw, Copy, Check, Coins } from "lucide-react"
+import { useToast } from "../hooks/use-toast"
 
-// Predefined validator transaction codes for simulation
-const VALIDATOR_TX_CODES = Array.from({ length: 20 }, (_, i) => {
-  const num = String(i + 1).padStart(3, '0');
-  return `TX-${num}`;
-});
+const generateTransactionCode = () => {
+  const prefix = "PING"
+  const timestamp = Date.now().toString().slice(-6)
+  const random = Math.random().toString(36).substring(2, 5).toUpperCase()
+  return `${prefix}-${timestamp}-${random}`
+}
 
-/**
- * SimulatedPingButton Component
- * Provides interface for validators to simulate website pings and earn rewards
- */
-export function SimulatedPingButton({ wid, url, toast, onPingComplete }) {
-  // ==================== STATE MANAGEMENT ====================
-  
-  const [selectedTxCode, setSelectedTxCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastResult, setLastResult] = useState(null);
+export function SimulatedPingButton({ website, onPingComplete }) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [availableTxCodes, setAvailableTxCodes] = useState([])
+  const [selectedTxCode, setSelectedTxCode] = useState("")
+  const [copiedCode, setCopiedCode] = useState("")
+  const { toast } = useToast()
 
-  // ==================== VALIDATION FUNCTIONS ====================
-
-  /**
-   * Validate selected transaction code
-   * @param {string} txCode - Selected transaction code
-   * @returns {Object} Validation result
-   */
-  const validateTransactionCode = (txCode) => {
-    if (!txCode) {
-      return { isValid: false, error: "Please select a transaction code" };
+  // Load transaction codes
+  useEffect(() => {
+    const savedCodes = JSON.parse(localStorage.getItem("transactionCodes") || "[]")
+    setAvailableTxCodes(savedCodes)
+    if (savedCodes.length > 0) {
+      setSelectedTxCode(savedCodes[0])
     }
+  }, [])
 
-    if (!VALIDATOR_TX_CODES.includes(txCode)) {
-      return { isValid: false, error: "Invalid transaction code selected" };
-    }
-
-    return { isValid: true, error: "" };
-  }
-
-  /**
-   * Validate website parameters
-   * @param {number} wid - Website ID
-   * @param {string} url - Website URL
-   * @returns {Object} Validation result
-   */
-  const validateWebsiteParams = (wid, url) => {
-    if (!wid || !url) {
-      return { isValid: false, error: "Missing website information" };
-    }
-
-    if (typeof wid !== 'number' || wid <= 0) {
-      return { isValid: false, error: "Invalid website ID" };
-    }
+  const handleQuickPing = async () => {
+    setIsLoading(true)
 
     try {
-      new URL(url);
-      return { isValid: true, error: "" };
-    } catch {
-      return { isValid: false, error: "Invalid website URL" };
-    }
-  }
+      // Generate a new transaction code for this ping
+      const txCode = generateTransactionCode()
 
-  // ==================== EVENT HANDLERS ====================
+      // Simulate ping delay
+      await new Promise((resolve) => setTimeout(resolve, 1500))
 
-  /**
-   * Handle transaction code selection
-   * @param {Event} e - Select change event
-   */
-  const handleTxCodeChange = (e) => {
-    const newCode = e.target.value;
-    setSelectedTxCode(newCode);
-    
-    // Clear previous result when changing codes
-    if (lastResult && lastResult.tx_hash !== newCode) {
-      setLastResult(null);
-    }
-  }
+      // Simulate ping result
+      const success = Math.random() > 0.1 // 90% success rate
+      const responseTime = Math.floor(Math.random() * 500) + 50 // 50-550ms
+      const earnings = success ? 0.0001 : 0 // Small reward for successful ping
 
-  /**
-   * Handle simulated ping submission
-   * Validates inputs, calls API, and handles response
-   */
-  const handleSimulatePing = async () => {
-    // Validate transaction code
-    const txValidation = validateTransactionCode(selectedTxCode);
-    if (!txValidation.isValid) {
-      toast({
-        title: "Transaction Code Required",
-        description: txValidation.error,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate website parameters
-    const websiteValidation = validateWebsiteParams(wid, url);
-    if (!websiteValidation.isValid) {
-      toast({
-        title: "Invalid Website",
-        description: websiteValidation.error,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      // Show initial feedback
-      toast({
-        title: "Processing Validation",
-        description: `Pinging ${url} with transaction ${selectedTxCode}...`,
-      });
-
-      // Submit ping to backend
-      const result = await api.manualPing({
-        wid,
-        url,
-        tx_hash: selectedTxCode
-      });
-
-      setLastResult(result);
-      
-      // Process and display results
-      if (result.status === "recorded" && result.result) {
-        const { is_up, latency_ms, region } = result.result;
-        const rewardEarned = 0.0001; // Standard validator reward
-
-        // Show success toast with detailed information
-        toast({
-          title: is_up ? "🟢 Site is UP! Reward Earned!" : "🔴 Site is DOWN - Reward Earned!",
-          description: (
-            <div className="space-y-1">
-              <p><strong>URL:</strong> {url}</p>
-              <p><strong>Status:</strong> {is_up ? "Online" : "Offline"}</p>
-              <p><strong>Response Time:</strong> {latency_ms}ms</p>
-              <p><strong>Region:</strong> {region}</p>
-              <p><strong>💰 Reward:</strong> +{rewardEarned} ETH</p>
-              <p><strong>🎯 Points:</strong> +5 points</p>
-              <p><strong>TX:</strong> {selectedTxCode}</p>
-            </div>
-          ),
-          variant: "default", // Always positive since validator earns money
-        });
-      } else {
-        // Fallback success message
-        toast({
-          title: "Validation Completed - Reward Earned!",
-          description: `Successfully validated ${url} and earned 0.0001 ETH with transaction ${selectedTxCode}`,
-        });
+      const result = {
+        success,
+        responseTime,
+        timestamp: new Date().toISOString(),
+        txHash: txCode,
+        earnings,
+        website: website?.url || "Unknown",
       }
 
-      // Trigger data refresh
+      // Save to local storage for history
+      const pingHistory = JSON.parse(localStorage.getItem("pingHistory") || "[]")
+      pingHistory.unshift(result)
+      localStorage.setItem("pingHistory", JSON.stringify(pingHistory.slice(0, 100))) // Keep last 100
+
+      toast({
+        title: success ? "Ping Successful! ⚡" : "Ping Failed ❌",
+        description: success
+          ? `Response: ${responseTime}ms • Earned: ${earnings} ETH`
+          : `Failed to reach ${website?.url || "website"}`,
+        variant: success ? "default" : "destructive",
+      })
+
       if (onPingComplete) {
-        onPingComplete();
+        onPingComplete(result)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to execute ping",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAdvancedPing = async () => {
+    if (!selectedTxCode) {
+      toast({
+        title: "Error",
+        description: "Please select a transaction code",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Simulate ping with selected transaction code
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      const success = Math.random() > 0.1
+      const responseTime = Math.floor(Math.random() * 500) + 50
+      const earnings = success ? 0.0001 : 0
+
+      const result = {
+        success,
+        responseTime,
+        timestamp: new Date().toISOString(),
+        txHash: selectedTxCode,
+        earnings,
+        website: website?.url || "Unknown",
       }
 
-      // Reset selection after successful ping
-      setSelectedTxCode('');
+      // Save to history
+      const pingHistory = JSON.parse(localStorage.getItem("pingHistory") || "[]")
+      pingHistory.unshift(result)
+      localStorage.setItem("pingHistory", JSON.stringify(pingHistory.slice(0, 100)))
 
-    } catch (error) {
-      console.error('Validation ping failed:', error);
-      
-      // Show user-friendly error message
       toast({
-        title: "Validation Failed",
-        description: error.message,
+        title: success ? "Advanced Ping Successful! ⚡" : "Ping Failed ❌",
+        description: success
+          ? `Response: ${responseTime}ms • TX: ${selectedTxCode} • Earned: ${earnings} ETH`
+          : `Failed with TX: ${selectedTxCode}`,
+        variant: success ? "default" : "destructive",
+      })
+
+      if (onPingComplete) {
+        onPingComplete(result)
+      }
+
+      setShowAdvanced(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to execute advanced ping",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
-  // ==================== RENDER HELPERS ====================
+  const handleGenerateNewCode = () => {
+    const newCode = generateTransactionCode()
+    const updatedCodes = [...availableTxCodes, newCode]
+    setAvailableTxCodes(updatedCodes)
+    localStorage.setItem("transactionCodes", JSON.stringify(updatedCodes))
+    setSelectedTxCode(newCode)
+    toast({
+      title: "Generated",
+      description: "New transaction code created!",
+    })
+  }
 
-  /**
-   * Render the last validation result
-   * @returns {JSX.Element|null} Result display component
-   */
-  const renderLastResult = () => {
-    if (!lastResult) return null;
-
-    const { result, onchain } = lastResult;
-    const isUp = result?.is_up;
-
-    return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-        <div className="flex items-center gap-2 text-green-800 text-sm font-medium mb-2">
-          <Coins className="h-4 w-4" />
-          <span>Last Validation Result</span>
-        </div>
-        <div className="space-y-1 text-sm">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Status:</span>
-            <div className="flex items-center gap-1">
-              {isUp ? (
-                <CheckCircle className="h-3 w-3 text-green-500" />
-              ) : (
-                <XCircle className="h-3 w-3 text-red-500" />
-              )}
-              <Badge variant={isUp ? "default" : "destructive"}>
-                {isUp ? "UP" : "DOWN"}
-              </Badge>
-            </div>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Reward Earned:</span>
-            <span className="font-mono text-green-600 font-semibold">+0.0001 ETH</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Response Time:</span>
-            <span className="font-mono">{result?.latency_ms || 'N/A'}ms</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Region:</span>
-            <span className="font-mono">{result?.region || 'unknown'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">TX Code:</span>
-            <span className="font-mono text-xs">{onchain?.tx_hash || selectedTxCode}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Gas Used:</span>
-            <span className="font-mono text-xs">{onchain?.gas_used || 'N/A'}</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ==================== MAIN RENDER ====================
+  const handleCopyCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopiedCode(code)
+      toast({
+        title: "Copied",
+        description: "Transaction code copied!",
+      })
+      setTimeout(() => setCopiedCode(""), 2000)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy code",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Validator Reward Notice */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-        <div className="flex items-center gap-2 text-green-800 text-sm">
-          <Coins className="h-4 w-4" />
-          <span className="font-medium">💰 Earn Rewards as Validator</span>
-        </div>
-        <p className="text-green-700 text-xs mt-1">
-          You earn 0.0001 ETH + 5 points for each website you validate! Rewards are earned regardless of site status.
-        </p>
-      </div>
-
-      {/* Transaction Code Selection */}
-      <div className="space-y-2">
-        <label htmlFor="tx-code" className="block text-sm font-medium text-gray-700">
-          Select Validator Transaction Code
-        </label>
-        <select 
-          id="tx-code"
-          value={selectedTxCode} 
-          onChange={handleTxCodeChange}
-          className="w-full p-2 border rounded-md text-sm bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isLoading}
-        >
-          <option value="">-- Select a transaction code to earn rewards --</option>
-          {VALIDATOR_TX_CODES.map(code => (
-            <option key={code} value={code}>
-              {code} (Earn 0.0001 ETH)
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-muted-foreground">
-          Each code can only be used once. Select a code to simulate earning validator rewards.
-        </p>
-      </div>
-
-      {/* Validate Button */}
-      <Button 
-        onClick={handleSimulatePing}
-        disabled={!selectedTxCode || isLoading}
-        className="w-full bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+    <div className="flex items-center gap-2">
+      {/* Quick Ping Button */}
+      <Button
+        onClick={handleQuickPing}
+        disabled={isLoading}
+        size="sm"
+        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
       >
-        {isLoading ? (
-          <div className="flex items-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-            <span>Validating & Earning...</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Coins className="h-4 w-4" />
-            <span>Validate Website & Earn 0.0001 ETH</span>
-          </div>
-        )}
+        {isLoading ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Zap className="w-3 h-3 mr-1" />}
+        {isLoading ? "Pinging..." : "Quick Ping"}
       </Button>
 
-      {/* Last Result Display */}
-      {renderLastResult()}
+      {/* Advanced Ping Dialog */}
+      <Dialog open={showAdvanced} onOpenChange={setShowAdvanced}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="bg-transparent border-border text-foreground hover:bg-accent">
+            <Settings className="w-3 h-3" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-card-foreground">
+              <Zap className="w-5 h-5 text-green-600" />
+              Advanced Ping
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Select a specific transaction code for this ping
+            </DialogDescription>
+          </DialogHeader>
 
-      {/* Educational Information */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-medium text-blue-800">How Validator Rewards Work:</p>
-            <ul className="text-blue-700 text-xs mt-1 space-y-1">
-              <li>• Website owners add sites to our monitoring network</li>
-              <li>• You earn 0.0001 ETH for each validation ping you perform</li>
-              <li>• Earn rewards whether the site is up or down</li>
-              <li>• Build reputation and earn more through consistent validations</li>
-              <li>• All transactions are simulated for educational purposes</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+          <div className="space-y-4">
+            {/* Website Info */}
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="text-sm font-medium text-card-foreground">Target Website</div>
+              <div className="text-sm text-muted-foreground font-mono">{website?.url || "No website selected"}</div>
+            </div>
 
-      {/* Technical Details */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-        <div className="flex items-start gap-2">
-          <TestTube className="h-4 w-4 text-gray-500 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-medium text-gray-800">🧪 Simulation Details:</p>
-            <ul className="text-gray-700 text-xs mt-1 space-y-1">
-              <li>• Uses fake transaction codes (TX-001 to TX-020)</li>
-              <li>• Performs real HTTP requests to validate websites</li>
-              <li>• Simulates blockchain rewards without real cryptocurrency</li>
-              <li>• Connected to Hardhat local development network</li>
-            </ul>
+            {/* Transaction Code Selection */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-card-foreground">Transaction Code</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateNewCode}
+                  className="text-xs bg-transparent"
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Generate New
+                </Button>
+              </div>
+
+              {availableTxCodes.length > 0 ? (
+                <Select value={selectedTxCode} onValueChange={setSelectedTxCode}>
+                  <SelectTrigger className="bg-background border-input text-foreground">
+                    <SelectValue placeholder="Select transaction code" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border">
+                    {availableTxCodes.map((code) => (
+                      <SelectItem key={code} value={code} className="text-popover-foreground">
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-mono text-sm">{code}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCopyCode(code)
+                            }}
+                            className="ml-2 h-6 w-6 p-0"
+                          >
+                            {copiedCode === code ? (
+                              <Check className="w-3 h-3 text-green-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="p-3 bg-muted rounded-lg text-center">
+                  <div className="text-sm text-muted-foreground mb-2">No transaction codes available</div>
+                  <Button onClick={handleGenerateNewCode} size="sm" variant="outline">
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Generate First Code
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Estimated Earnings */}
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2">
+                <Coins className="w-4 h-4 text-blue-600" />
+                <div className="text-sm">
+                  <span className="font-medium text-blue-800 dark:text-blue-200">Estimated Earnings: </span>
+                  <span className="font-mono text-blue-600">0.0001 ETH</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowAdvanced(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAdvancedPing}
+                disabled={isLoading || !selectedTxCode}
+                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Pinging...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Execute Ping
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
+  )
 }

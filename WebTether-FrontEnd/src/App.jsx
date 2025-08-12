@@ -7,15 +7,29 @@ import { Toaster } from "./components/ui/sonner"
 import OnboardingFlow from "./components/onboarding/OnboardingFlow"
 import WebTetherLanding from "./pages/WebTetherLanding"
 import Dashboard from "./pages/Dashboard"
-import "./styles/globals.css"
+import "./index.css"
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
   const { user, showOnboarding, completeOnboarding } = useAuth()
+  const [currentPage, setCurrentPage] = useState(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
+
+  // Listen for navigation changes
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPage(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
 
   // Show onboarding for new validators
   if (showOnboarding && user) {
-    return <OnboardingFlow onComplete={completeOnboarding} />
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <OnboardingFlow onComplete={completeOnboarding} />
+      </div>
+    )
   }
 
   // Simple routing
@@ -28,17 +42,7 @@ function AppContent() {
     }
   }
 
-  // Listen for navigation changes
-  useEffect(() => {
-    const handlePopState = () => {
-      setCurrentPage(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
-    }
-    
-    window.addEventListener("popstate", handlePopState)
-    return () => window.removeEventListener("popstate", handlePopState)
-  }, [])
-
-  return renderPage()
+  return <div className="min-h-screen bg-background text-foreground">{renderPage()}</div>
 }
 
 function App() {

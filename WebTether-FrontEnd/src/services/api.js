@@ -97,16 +97,25 @@ class ApiService {
     return this.get("/websites/my-sites")
   }
 
-  async createWebsite(url, category) {
-    return this.post("/websites/", { url, category })
+  // Fixed function parameters to properly handle both old and new formats
+  async createWebsite(data, category = null) {
+    // Support both old format (url, category) and new format (object with payment info)
+    if (typeof data === "string") {
+      // Legacy format: createWebsite(url, category)
+      const url = data
+      return this.post("/websites/", { url, category })
+    } else {
+      // New format: createWebsite({ url, category, tx_hash, fee_paid_numeric })
+      return this.post("/websites/", data)
+    }
   }
 
   async updateWebsite(wid, data) {
-    return this.put(`/websites/${wid}`, data)
+    return this.put(`/website/${wid}`, data)
   }
 
   async deleteWebsite(wid) {
-    return this.delete(`/website/${wid}`)
+    return this.delete(`/websites/${wid}`)
   }
 
   // Ping endpoints
@@ -116,6 +125,7 @@ class ApiService {
 
   /**
    * Submit a simulated ping with fake transaction code
+   * Now users EARN money for pinging instead of paying
    * @param {Object} params - Ping parameters
    * @param {number} params.wid - Website ID
    * @param {string} params.url - Website URL
@@ -158,7 +168,13 @@ export const websiteAPI = {
   getWebsiteById: (wid) => api.getWebsiteById(wid),
   getAvailableSites: () => api.getAvailableSites(),
   getMySites: () => api.getMySites(),
-  createWebsite: (url, category) => api.createWebsite(url, category),
+  createWebsite: (urlOrData, category) => {
+    if (typeof urlOrData === "object") {
+      return api.createWebsite(urlOrData)
+    } else {
+      return api.createWebsite(urlOrData, category)
+    }
+  },
   updateWebsite: (wid, data) => api.updateWebsite(wid, data),
   deleteWebsite: (wid) => api.deleteWebsite(wid),
 }
