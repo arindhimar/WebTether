@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
@@ -29,8 +29,7 @@ const generateTransactionCode = () => {
   return `${prefix}-${timestamp}-${random}`
 }
 
-export function AddWebsiteDialog({ onWebsiteAdded, trigger }) {
-  const [open, setOpen] = useState(false)
+export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     url: "",
@@ -162,7 +161,7 @@ export function AddWebsiteDialog({ onWebsiteAdded, trigger }) {
         feePaid: "0.001",
       })
 
-      setOpen(false)
+      onOpenChange(false)
     } catch (error) {
       console.error("Error adding website:", error)
       toast({
@@ -178,30 +177,24 @@ export function AddWebsiteDialog({ onWebsiteAdded, trigger }) {
   const selectedCategory = WEBSITE_CATEGORIES.find((cat) => cat.value === formData.category)
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Website
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md bg-card border-border">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md modern-card">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-card-foreground">
-            <Globe className="w-5 h-5 text-purple-600" />
-            Add New Website
+          <DialogTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600">
+              <Globe className="h-5 w-5 text-white" />
+            </div>
+            Add Website
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             Add a website to start monitoring its uptime and earn rewards
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
           {/* URL Input */}
           <div className="space-y-2">
-            <Label htmlFor="url" className="text-card-foreground">
+            <Label htmlFor="url" className="text-sm font-medium text-foreground">
               Website URL
             </Label>
             <Input
@@ -210,15 +203,15 @@ export function AddWebsiteDialog({ onWebsiteAdded, trigger }) {
               placeholder="https://example.com"
               value={formData.url}
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              className="bg-background border-input text-foreground"
+              className="h-11 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm"
             />
           </div>
 
           {/* Category Selection */}
           <div className="space-y-2">
-            <Label className="text-card-foreground">Category</Label>
+            <Label className="text-sm font-medium text-foreground">Category</Label>
             <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-              <SelectTrigger className="bg-background border-input text-foreground">
+              <SelectTrigger className="h-11 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm">
                 <SelectValue placeholder="Select category">
                   {selectedCategory && (
                     <div className="flex items-center gap-2">
@@ -228,9 +221,9 @@ export function AddWebsiteDialog({ onWebsiteAdded, trigger }) {
                   )}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="bg-popover border-border">
+              <SelectContent className="modern-card border-border/50">
                 {WEBSITE_CATEGORIES.map((category) => (
-                  <SelectItem key={category.value} value={category.value} className="text-popover-foreground">
+                  <SelectItem key={category.value} value={category.value}>
                     <div className="flex items-center gap-2">
                       <span>{category.icon}</span>
                       <span>{category.label}</span>
@@ -244,25 +237,25 @@ export function AddWebsiteDialog({ onWebsiteAdded, trigger }) {
           {/* Transaction Code Selection */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-card-foreground">Transaction Code</Label>
+              <Label className="text-sm font-medium text-foreground">Transaction Code</Label>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleGenerateNewCode}
-                className="text-xs bg-transparent"
+                className="text-xs h-8 rounded-lg btn-secondary bg-transparent"
               >
                 <RefreshCw className="w-3 h-3 mr-1" />
-                Generate New
+                Generate
               </Button>
             </div>
             <Select value={formData.txHash} onValueChange={(value) => setFormData({ ...formData, txHash: value })}>
-              <SelectTrigger className="bg-background border-input text-foreground">
+              <SelectTrigger className="h-11 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm">
                 <SelectValue placeholder="Select transaction code" />
               </SelectTrigger>
-              <SelectContent className="bg-popover border-border">
+              <SelectContent className="modern-card border-border/50">
                 {availableTxCodes.map((code) => (
-                  <SelectItem key={code} value={code} className="text-popover-foreground">
+                  <SelectItem key={code} value={code}>
                     <div className="flex items-center justify-between w-full">
                       <span className="font-mono text-sm">{code}</span>
                       <Button
@@ -290,26 +283,25 @@ export function AddWebsiteDialog({ onWebsiteAdded, trigger }) {
 
           {/* Fee Display */}
           <div className="space-y-2">
-            <Label className="text-card-foreground">Registration Fee</Label>
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-              <Coins className="w-4 h-4 text-yellow-600" />
+            <Label className="text-sm font-medium text-foreground">Registration Fee</Label>
+            <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl border border-border/30">
+              <Coins className="w-5 h-5 text-yellow-600" />
               <span className="font-mono text-sm text-muted-foreground">{formData.feePaid} ETH</span>
-              <Badge variant="secondary" className="ml-auto">
-                One-time
-              </Badge>
+              <Badge className="status-info ml-auto">One-time</Badge>
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="flex gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1">
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1 h-11 rounded-xl btn-secondary"
+            >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-            >
+            <Button type="submit" disabled={loading} className="flex-1 h-11 rounded-xl btn-primary">
               {loading ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />

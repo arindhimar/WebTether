@@ -1,377 +1,483 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Alert, AlertDescription } from "../ui/alert"
-import { Badge } from "../ui/badge"
-import { Separator } from "../ui/separator"
 import { useAuth } from "../../contexts/AuthContext"
-import { api } from "../../services/api"
 import { useToast } from "../../hooks/use-toast"
-import { validateCloudflareWorkerUrl } from "../../utils/cloudflareAgent"
-import {
-  Cloud,
-  ExternalLink,
-  CheckCircle,
-  AlertCircle,
-  Settings,
-  User,
-  Shield,
-  Loader2,
-  Save,
-  Info,
-  Globe,
-  Zap,
-} from "lucide-react"
+import { LoadingSpinner } from "./LoadingSpinner"
+import { Save, CheckCircle, AlertTriangle, Copy, ExternalLink, Code, Server, Globe, Zap } from "lucide-react"
+import { validateCloudflareWorkerUrl, isCloudflareWorkerConfigured } from "../../utils/cloudflareAgent"
 
 export default function UserSettings() {
-  const { user, refreshUserData } = useAuth()
+  const { user, updateUser } = useAuth()
   const { toast } = useToast()
-  const [agentUrl, setAgentUrl] = useState(user?.agent_url || "")
+
+  const [settings, setSettings] = useState({
+    agentUrl: "",
+    agentName: "",
+    agentDescription: "",
+  })
+
   const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState({})
+  const [isSaving, setIsSaving] = useState(false)
+  const [urlValidation, setUrlValidation] = useState({ isValid: true, error: "" })
 
-  const handleSaveAgent = async () => {
-    if (!user?.id) {
-      toast({
-        title: "Authentication Error",
-        description: "User session expired. Please log in again.",
-        variant: "destructive",
+  useEffect(() => {
+    if (user) {
+      setSettings({
+        agentUrl: user.agent_url || "",
+        agentName: user.agent_name || "",
+        agentDescription: user.agent_description || "",
       })
-      return
     }
+  }, [user])
 
-    // Validate URL if provided
-    if (agentUrl.trim()) {
-      const validation = validateCloudflareWorkerUrl(agentUrl)
+  const handleInputChange = (field, value) => {
+    setSettings((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+
+    // Validate URL in real-time
+    if (field === "agentUrl") {
+      const validation = validateCloudflareWorkerUrl(value)
+      setUrlValidation(validation)
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    try {
+      setIsSaving(true)
+
+      // Validate URL before saving
+      const validation = validateCloudflareWorkerUrl(settings.agentUrl)
       if (!validation.isValid) {
-        setErrors({ agentUrl: validation.error })
         toast({
-          title: "Invalid Worker URL",
+          title: "Invalid URL",
           description: validation.error,
           variant: "destructive",
         })
         return
       }
-    }
 
-    setIsLoading(true)
-    setErrors({})
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    try {
-      await api.updateUser(user.id, { agent_url: agentUrl.trim() })
-      await refreshUserData()
+      // Update user context
+      await updateUser({
+        agent_url: settings.agentUrl,
+        agent_name: settings.agentName,
+        agent_description: settings.agentDescription,
+      })
 
       toast({
-        title: "Settings Saved Successfully! ✅",
-        description: agentUrl.trim()
-          ? "Your Cloudflare Worker URL has been updated."
-          : "Cloudflare Worker URL has been removed.",
-        action: <CheckCircle className="h-4 w-4" />,
+        title: "Settings Saved! 🎉",
+        description: "Your Cloudflare Worker configuration has been updated.",
       })
     } catch (error) {
-      console.error("Failed to save agent URL:", error)
-      const errorMessage = error.message || "Failed to save settings. Please try again."
-      setErrors({ general: errorMessage })
+      console.error("Error updating settings:", error)
       toast({
         title: "Save Failed",
-        description: errorMessage,
+        description: "Failed to save settings. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
   }
 
-  const handleInputChange = (value) => {
-    setAgentUrl(value)
-    if (errors.agentUrl) {
-      setErrors((prev) => ({ ...prev, agentUrl: null }))
-    }
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+    toast({
+      title: "Copied!",
+      description: "Code copied to clipboard.",
+    })
   }
 
-  const isConfigured = user?.agent_url && user.agent_url.trim() !== ""
+  const isConfigured = isCloudflareWorkerConfigured(user)
+
+  const cloudflareWorkerCode = `// Cloudflare Worker for WebTether Validation
+export default {
+  async fetch(request, env, ctx) {
+    // Handle CORS preflight requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
+    }
+
+    try {
+      const url = new URL(request.url);
+      
+      // Health check endpoint
+      if (url.pathname === '/health') {
+        return new Response(JSON.stringify({ 
+          status: 'healthy', 
+          timestamp: new Date().toISOString(),
+          region: request.cf?.colo || 'unknown'
+        }), {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+
+      // Ping validation endpoint
+      if (url.pathname === '/validate' && request.method === 'POST') {
+        const body = await request.json();
+        const { targetUrl, timeout = 5000 } = body;
+
+        if (!targetUrl) {
+          return new Response(JSON.stringify({ 
+            error: 'targetUrl is required' 
+          }), { 
+            status: 400,
+            headers: { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+
+        const startTime = Date.now();
+        
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+          
+          const response = await fetch(targetUrl, {
+            method: 'GET',
+            signal: controller.signal,
+            headers: {
+              'User-Agent': 'WebTether-Validator/1.0'
+            }
+          });
+          
+          clearTimeout(timeoutId);
+          const endTime = Date.now();
+          const latency = endTime - startTime;
+
+          return new Response(JSON.stringify({
+            success: true,
+            isUp: response.ok,
+            statusCode: response.status,
+            latency: latency,
+            timestamp: new Date().toISOString(),
+            region: request.cf?.colo || 'unknown',
+            validatorId: env.VALIDATOR_ID || 'unknown'
+          }), {
+            headers: { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+
+        } catch (error) {
+          const endTime = Date.now();
+          const latency = endTime - startTime;
+
+          return new Response(JSON.stringify({
+            success: true,
+            isUp: false,
+            error: error.message,
+            latency: latency,
+            timestamp: new Date().toISOString(),
+            region: request.cf?.colo || 'unknown',
+            validatorId: env.VALIDATOR_ID || 'unknown'
+          }), {
+            headers: { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+      }
+
+      return new Response('Not Found', { status: 404 });
+
+    } catch (error) {
+      return new Response(JSON.stringify({ 
+        error: 'Internal Server Error',
+        message: error.message 
+      }), { 
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  },
+};`
 
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-blue-100">
-            <Settings className="h-8 w-8 text-blue-600" />
-          </div>
-          Account Settings
-        </h1>
-        <p className="text-muted-foreground">Manage your account preferences and validator configuration</p>
-      </div>
-
-      {/* General Errors */}
-      {errors.general && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{errors.general}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Cloudflare Worker Configuration */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-orange-50/30">
-        <CardHeader className="pb-6">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-orange-100">
-              <Cloud className="h-6 w-6 text-orange-600" />
-            </div>
-            <div className="flex-1">
-              <CardTitle className="text-xl flex items-center gap-2">
-                Cloudflare Worker Configuration
-                {isConfigured && <Badge className="bg-green-100 text-green-800">Active</Badge>}
-              </CardTitle>
-              <CardDescription className="mt-1">
-                Configure your personal Cloudflare Worker to ping websites from your location and earn rewards
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <Label htmlFor="agent-url" className="text-sm font-medium">
-              Cloudflare Worker URL
-            </Label>
-            <div className="relative">
-              <Input
-                id="agent-url"
-                type="url"
-                placeholder="https://your-worker.your-subdomain.workers.dev"
-                value={agentUrl}
-                onChange={(e) => handleInputChange(e.target.value)}
-                className={`font-mono text-sm h-11 pl-10 ${errors.agentUrl ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                disabled={isLoading}
-              />
-              <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            </div>
-            {errors.agentUrl && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.agentUrl}
-              </p>
+    <div className="space-y-8 max-w-4xl mx-auto">
+      <div className="grid gap-8">
+        {/* Cloudflare Worker Configuration */}
+        <Card className="modern-card">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg">
+                <Server className="h-5 w-5 text-white" />
+              </div>
+              Cloudflare Worker Configuration
+            </CardTitle>
+            <CardDescription>
+              Configure your Cloudflare Worker to validate websites and earn ETH rewards
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Status Alert */}
+            {isConfigured ? (
+              <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800 dark:text-green-200">
+                  Your Cloudflare Worker is configured and ready to validate websites!
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                  Configure your Cloudflare Worker to start earning ETH from website validations.
+                </AlertDescription>
+              </Alert>
             )}
-            <p className="text-sm text-muted-foreground">
-              Enter the URL of your deployed Cloudflare Worker that will handle ping requests
-            </p>
-          </div>
 
-          <div className="flex items-center justify-between p-4 border rounded-lg bg-background/50">
-            <div className="flex items-center gap-3">
-              {isConfigured ? (
-                <>
-                  <div className="p-2 rounded-full bg-green-100">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-green-700">Worker Configured</span>
-                    <p className="text-xs text-muted-foreground">Ready to earn rewards</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="p-2 rounded-full bg-orange-100">
-                    <AlertCircle className="h-4 w-4 text-orange-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-orange-700">Worker Not Configured</span>
-                    <p className="text-xs text-muted-foreground">Setup required to start earning</p>
-                  </div>
-                </>
-              )}
+            {/* Configuration Form */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="agentUrl" className="text-sm font-medium">
+                  Worker URL *
+                </Label>
+                <Input
+                  id="agentUrl"
+                  value={settings.agentUrl}
+                  onChange={(e) => handleInputChange("agentUrl", e.target.value)}
+                  placeholder="https://your-worker.your-subdomain.workers.dev"
+                  className={`input-modern h-12 ${!urlValidation.isValid ? "border-red-500 focus:border-red-500" : ""}`}
+                />
+                {!urlValidation.isValid && <p className="text-sm text-red-600">{urlValidation.error}</p>}
+                <p className="text-sm text-muted-foreground">
+                  Your Cloudflare Worker URL (must end with .workers.dev or .workers.cloudflare.com)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agentName" className="text-sm font-medium">
+                  Worker Name (Optional)
+                </Label>
+                <Input
+                  id="agentName"
+                  value={settings.agentName}
+                  onChange={(e) => handleInputChange("agentName", e.target.value)}
+                  placeholder="My WebTether Validator"
+                  className="input-modern h-12"
+                />
+                <p className="text-sm text-muted-foreground">A friendly name for your validator worker</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agentDescription" className="text-sm font-medium">
+                  Description (Optional)
+                </Label>
+                <Input
+                  id="agentDescription"
+                  value={settings.agentDescription}
+                  onChange={(e) => handleInputChange("agentDescription", e.target.value)}
+                  placeholder="High-performance validator in US-East region"
+                  className="input-modern h-12"
+                />
+                <p className="text-sm text-muted-foreground">Brief description of your validator setup</p>
+              </div>
             </div>
+
             <Button
-              onClick={handleSaveAgent}
-              disabled={isLoading}
-              className="bg-orange-500 hover:bg-orange-600 text-white"
+              onClick={handleSaveSettings}
+              disabled={isSaving || !urlValidation.isValid}
+              className="w-full btn-primary h-12 rounded-xl"
             >
-              {isLoading ? (
+              {isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Saving Configuration...
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" />
+                  <Save className="h-4 w-4 mr-2" />
                   Save Configuration
                 </>
               )}
             </Button>
-          </div>
+          </CardContent>
+        </Card>
 
-          {isConfigured && (
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                <strong>Your Cloudflare Worker is active!</strong>
-                <br />
-                Current URL: <code className="bg-green-100 px-1 rounded text-xs font-mono">{user.agent_url}</code>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+        {/* Setup Instructions */}
+        <Card className="modern-card">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg">
+                <Code className="h-5 w-5 text-white" />
+              </div>
+              Setup Instructions
+            </CardTitle>
+            <CardDescription>Follow these steps to deploy your Cloudflare Worker validator</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Step-by-step guide */}
+            <div className="space-y-4">
+              <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                  1
+                </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-blue-800 mb-2">Need help setting up?</h4>
-                  <p className="text-sm text-blue-700 mb-3">
-                    Deploy your own Cloudflare Worker to start pinging websites from your location and earning rewards.
+                  <h4 className="font-semibold text-foreground">Create Cloudflare Worker</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Go to Cloudflare Dashboard → Workers & Pages → Create Application → Create Worker
                   </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-blue-600 border-blue-300 hover:bg-blue-100 bg-transparent"
-                    onClick={() => window.open("https://developers.cloudflare.com/workers/", "_blank")}
-                  >
-                    <ExternalLink className="h-3 w-3 mr-2" />
-                    View Setup Guide
-                  </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </CardContent>
-      </Card>
 
-      {/* Account Information */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-blue-50/30">
-        <CardHeader className="pb-6">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-blue-100">
-              <User className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <CardTitle className="text-xl">Account Information</CardTitle>
-              <CardDescription className="mt-1">Your account details and current status</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
+              <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                  2
+                </div>
+                <div>
+                  <h4 className="font-semibold text-foreground">Deploy Worker Code</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Copy the code below and paste it into your Cloudflare Worker editor
+                  </p>
+                </div>
+              </div>
 
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-muted-foreground">Full Name</Label>
-              <div className="p-3 bg-background/60 rounded-lg border">
-                <p className="text-sm font-semibold">{user?.name || "Not set"}</p>
+              <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                  3
+                </div>
+                <div>
+                  <h4 className="font-semibold text-foreground">Configure URL</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Copy your Worker URL and paste it in the configuration form above
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                  4
+                </div>
+                <div>
+                  <h4 className="font-semibold text-foreground">Start Earning</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Your validator will automatically start receiving ping requests and earning ETH
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-muted-foreground">Email Address</Label>
-              <div className="p-3 bg-background/60 rounded-lg border">
-                <p className="text-sm font-mono">{user?.email || "Not set"}</p>
+          </CardContent>
+        </Card>
+
+        {/* Worker Code */}
+        <Card className="modern-card">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg">
+                <Globe className="h-5 w-5 text-white" />
               </div>
+              Cloudflare Worker Code
+            </CardTitle>
+            <CardDescription>Copy this code and paste it into your Cloudflare Worker</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto text-sm max-h-96 overflow-y-auto">
+                <code>{cloudflareWorkerCode}</code>
+              </pre>
+              <Button
+                onClick={() => copyToClipboard(cloudflareWorkerCode)}
+                className="absolute top-2 right-2 h-8 w-8 p-0"
+                variant="outline"
+                size="sm"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-muted-foreground">Account Type</Label>
-              <div className="p-3 bg-background/60 rounded-lg border">
-                <Badge
-                  variant={user?.isVisitor ? "default" : "secondary"}
-                  className={`text-sm ${user?.isVisitor ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"}`}
-                >
-                  <Shield className="w-3 h-3 mr-1" />
-                  {user?.isVisitor ? "Validator Account" : "Website Owner"}
-                </Badge>
+
+            <div className="flex gap-4">
+              <Button
+                onClick={() => copyToClipboard(cloudflareWorkerCode)}
+                variant="outline"
+                className="flex-1 h-12 rounded-xl"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Code
+              </Button>
+              <Button
+                onClick={() => window.open("https://dash.cloudflare.com/", "_blank")}
+                variant="outline"
+                className="flex-1 h-12 rounded-xl"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Cloudflare
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Features & Benefits */}
+        <Card className="modern-card">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 shadow-lg">
+                <Zap className="h-5 w-5 text-white" />
               </div>
-            </div>
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-muted-foreground">Member Since</Label>
-              <div className="p-3 bg-background/60 rounded-lg border">
-                <p className="text-sm font-semibold">
-                  {user?.created_at
-                    ? new Date(user.created_at).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })
-                    : "Unknown"}
+              Validator Benefits
+            </CardTitle>
+            <CardDescription>Why run a WebTether validator?</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800">
+                <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">Earn ETH Rewards</h4>
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  Get paid in ETH for every website validation you perform
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border border-blue-200 dark:border-blue-800">
+                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Global Network</h4>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Join validators worldwide providing reliable uptime monitoring
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-950/20 dark:to-violet-950/20 border border-purple-200 dark:border-purple-800">
+                <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">Low Maintenance</h4>
+                <p className="text-sm text-purple-700 dark:text-purple-300">
+                  Set it up once and earn passively with minimal maintenance
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border border-orange-200 dark:border-orange-800">
+                <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">Fast & Reliable</h4>
+                <p className="text-sm text-orange-700 dark:text-orange-300">
+                  Cloudflare's edge network ensures fast, reliable validations
                 </p>
               </div>
             </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Zap className="h-4 w-4 text-blue-600" />
-              Account Capabilities
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="bg-background/40">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium">Website Monitoring</span>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800 text-xs">Enabled</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-background/40">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Cloud className="h-4 w-4 text-orange-600" />
-                      <span className="text-sm font-medium">Ping Validation</span>
-                    </div>
-                    <Badge
-                      variant={isConfigured ? "default" : "secondary"}
-                      className={`text-xs ${isConfigured ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}
-                    >
-                      {isConfigured ? "Active" : "Setup Required"}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-background/40">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium">Wallet Integration</span>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800 text-xs">Enabled</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-background/40">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-yellow-600" />
-                      <span className="text-sm font-medium">Earnings Tracking</span>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {!isConfigured && user?.isVisitor && (
-            <Alert className="bg-orange-50 border-orange-200">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-800">
-                <strong>Action Required:</strong> Configure your Cloudflare Worker above to start earning rewards by
-                validating websites. Without this setup, you won't be able to participate in the validation network.
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

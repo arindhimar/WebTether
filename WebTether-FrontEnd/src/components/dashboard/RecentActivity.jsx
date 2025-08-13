@@ -1,124 +1,69 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
-import { Skeleton } from "../ui/skeleton"
 import { ScrollArea } from "../ui/scroll-area"
-import { Activity, CheckCircle, XCircle, Globe, Zap, TrendingUp, Clock, Coins } from "lucide-react"
+import { Activity, Clock, Globe, CheckCircle, XCircle, TrendingUp } from "lucide-react"
 
 export default function RecentActivity({ websites = [], pings = [], user }) {
   const [recentActivities, setRecentActivities] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (websites.length > 0 || pings.length > 0) {
-      processRecentActivity()
-    }
+    generateRecentActivities()
   }, [websites, pings, user])
 
-  const processRecentActivity = () => {
-    try {
-      setIsLoading(true)
+  const generateRecentActivities = () => {
+    const activities = []
 
-      const activities = []
+    // Add recent pings
+    const recentPings = pings
+      .filter((ping) => (user?.isVisitor ? ping.uid === user.id : websites.some((w) => w.wid === ping.wid)))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 8)
 
-      // Process recent pings
-      const userPings = pings
-        .filter((ping) =>
-          user?.isVisitor ? ping.uid === user.id : ping.wid && websites.some((w) => w.wid === ping.wid),
-        )
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .slice(0, 10)
-
-      userPings.forEach((ping) => {
-        const website = websites.find((w) => w.wid === ping.wid)
-        activities.push({
-          id: `ping-${ping.pid}`,
-          type: "ping",
-          title: user?.isVisitor ? "Validation Completed" : "Website Pinged",
-          description: website ? `${website.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}` : "Unknown website",
-          status: ping.is_up ? "success" : "failed",
-          timestamp: ping.created_at,
-          metadata: {
-            responseTime: ping.latency_ms,
-            earnings: user?.isVisitor ? "0.001 ETH" : null,
-            url: website?.url,
-          },
-        })
+    recentPings.forEach((ping) => {
+      const website = websites.find((w) => w.wid === ping.wid)
+      activities.push({
+        id: `ping-${ping.pid}`,
+        type: "ping",
+        title: user?.isVisitor ? "Validation Completed" : "Site Pinged",
+        description: website
+          ? `${website.url.replace(/^https?:\/\//, "").replace(/\/$/, "")} responded in ${ping.latency_ms}ms`
+          : "Unknown website",
+        timestamp: ping.created_at,
+        status: ping.is_up ? "success" : "failed",
+        icon: ping.is_up ? CheckCircle : XCircle,
+        color: ping.is_up ? "text-emerald-500" : "text-red-500",
+        bgColor: ping.is_up ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-red-50 dark:bg-red-950/20",
+        earnings: user?.isVisitor ? "0.001 ETH" : null,
       })
+    })
 
-      // Process website additions (for website owners)
-      if (!user?.isVisitor) {
-        websites
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          .slice(0, 5)
-          .forEach((website) => {
-            activities.push({
-              id: `website-${website.wid}`,
-              type: "website_added",
-              title: "Website Added",
-              description: website.url.replace(/^https?:\/\//, "").replace(/\/$/, ""),
-              status: "info",
-              timestamp: website.created_at,
-              metadata: {
-                category: website.category,
-                url: website.url,
-              },
-            })
+    // Add website additions (for website owners)
+    if (!user?.isVisitor) {
+      websites
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 3)
+        .forEach((website) => {
+          activities.push({
+            id: `website-${website.wid}`,
+            type: "website",
+            title: "Website Added",
+            description: website.url.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+            timestamp: website.created_at,
+            status: "info",
+            icon: Globe,
+            color: "text-violet-500",
+            bgColor: "bg-violet-50 dark:bg-violet-950/20",
           })
-      }
-
-      // Sort all activities by timestamp
-      const sortedActivities = activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 15)
-
-      setRecentActivities(sortedActivities)
-    } catch (error) {
-      console.error("Error processing recent activity:", error)
-    } finally {
-      setIsLoading(false)
+        })
     }
-  }
 
-  const getActivityIcon = (type, status) => {
-    switch (type) {
-      case "ping":
-        return status === "success" ? (
-          <CheckCircle className="h-4 w-4 text-green-600" />
-        ) : (
-          <XCircle className="h-4 w-4 text-red-600" />
-        )
-      case "website_added":
-        return <Globe className="h-4 w-4 text-blue-600" />
-      default:
-        return <Activity className="h-4 w-4 text-gray-600" />
-    }
-  }
+    // Sort all activities by timestamp
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "success":
-        return (
-          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-            Success
-          </Badge>
-        )
-      case "failed":
-        return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-            Failed
-          </Badge>
-        )
-      case "info":
-        return (
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-            Added
-          </Badge>
-        )
-      default:
-        return <Badge variant="secondary">Unknown</Badge>
-    }
+    setRecentActivities(activities.slice(0, 10))
   }
 
   const formatTimeAgo = (timestamp) => {
@@ -132,136 +77,84 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
     return `${Math.floor(diffInSeconds / 86400)}d ago`
   }
 
-  // Calculate quick stats
-  const stats = {
-    totalPings: pings.filter((p) => (user?.isVisitor ? p.uid === user.id : websites.some((w) => w.wid === p.wid)))
-      .length,
-    successfulPings: pings.filter(
-      (p) => p.is_up && (user?.isVisitor ? p.uid === user.id : websites.some((w) => w.wid === p.wid)),
-    ).length,
-    totalEarnings: user?.isVisitor ? (pings.filter((p) => p.uid === user.id).length * 0.001).toFixed(3) : null,
-  }
-
-  const successRate = stats.totalPings > 0 ? Math.round((stats.successfulPings / stats.totalPings) * 100) : 0
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Recent Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <div className="flex-1 space-y-1">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-                <Skeleton className="h-6 w-16" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "success":
+        return <Badge className="status-success text-xs px-2 py-1">Success</Badge>
+      case "failed":
+        return <Badge className="status-error text-xs px-2 py-1">Failed</Badge>
+      case "info":
+        return <Badge className="status-info text-xs px-2 py-1">Added</Badge>
+      default:
+        return <Badge className="status-warning text-xs px-2 py-1">Unknown</Badge>
+    }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Recent Activity
+    <Card className="modern-card">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg">
+            <Activity className="h-5 w-5 text-white" />
           </div>
-          <Badge variant="outline" className="text-xs">
-            {recentActivities.length} items
-          </Badge>
+          Activity Feed
         </CardTitle>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Zap className="h-3 w-3" />
-            <span>{stats.totalPings} pings</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <TrendingUp className="h-3 w-3" />
-            <span>{successRate}% success</span>
-          </div>
-          {user?.isVisitor && (
-            <>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Coins className="h-3 w-3" />
-                <span>{stats.totalEarnings} ETH</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CheckCircle className="h-3 w-3" />
-                <span>{stats.successfulPings} successful</span>
-              </div>
-            </>
-          )}
-        </div>
+        <CardDescription className="text-muted-foreground">
+          Latest updates and validations • {recentActivities.length} recent items
+        </CardDescription>
       </CardHeader>
-
       <CardContent>
         {recentActivities.length === 0 ? (
-          <div className="text-center py-8">
-            <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="font-medium mb-2">No Recent Activity</h3>
+          <div className="text-center py-12">
+            <div className="mx-auto w-16 h-16 rounded-3xl bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-950/20 dark:to-cyan-950/20 flex items-center justify-center mb-4">
+              <Activity className="h-8 w-8 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">No Recent Activity</h3>
             <p className="text-sm text-muted-foreground">
               {user?.isVisitor
-                ? "Start validating websites to see your activity here."
-                : "Add websites or wait for validator pings to see activity."}
+                ? "Start validating websites to see activity here."
+                : "Add websites and monitor their uptime to see activity."}
             </p>
           </div>
         ) : (
-          <ScrollArea className="h-80">
+          <ScrollArea className="h-[400px] pr-4">
             <div className="space-y-3">
-              {recentActivities.map((activity, index) => (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-shrink-0 mt-0.5">{getActivityIcon(activity.type, activity.status)}</div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-sm font-medium truncate">{activity.title}</h4>
-                      {getStatusBadge(activity.status)}
+              {recentActivities.map((activity, index) => {
+                const Icon = activity.icon
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-4 p-4 rounded-2xl border border-border/50 bg-gradient-to-r from-background to-muted/20 hover:shadow-md transition-all duration-200"
+                  >
+                    <div className={`p-2 rounded-xl ${activity.bgColor} flex-shrink-0`}>
+                      <Icon className={`h-4 w-4 ${activity.color}`} />
                     </div>
 
-                    <p className="text-xs text-muted-foreground truncate mb-1">{activity.description}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-sm text-foreground">{activity.title}</h4>
+                        {getStatusBadge(activity.status)}
+                      </div>
 
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      <span>{formatTimeAgo(activity.timestamp)}</span>
+                      <p className="text-sm text-muted-foreground truncate mb-2">{activity.description}</p>
 
-                      {activity.metadata?.responseTime && (
-                        <>
-                          <span>•</span>
-                          <span>{activity.metadata.responseTime}ms</span>
-                        </>
-                      )}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatTimeAgo(activity.timestamp)}</span>
+                        </div>
 
-                      {activity.metadata?.earnings && (
-                        <>
-                          <span>•</span>
-                          <span className="text-green-600 font-medium">+{activity.metadata.earnings}</span>
-                        </>
-                      )}
+                        {activity.earnings && (
+                          <div className="flex items-center gap-1 text-xs">
+                            <TrendingUp className="h-3 w-3 text-emerald-500" />
+                            <span className="text-emerald-600 font-semibold">+{activity.earnings}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </motion.div>
-              ))}
+                )
+              })}
             </div>
           </ScrollArea>
         )}

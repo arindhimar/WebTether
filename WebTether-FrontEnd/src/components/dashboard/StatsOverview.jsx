@@ -1,133 +1,190 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "../ui/card"
 import { Badge } from "../ui/badge"
-import { Globe, TrendingUp, Wallet, CheckCircle, Activity, Users } from "lucide-react"
+import { Skeleton } from "../ui/skeleton"
+import { TrendingUp, Globe, Zap, CheckCircle, Target, Coins, BarChart3 } from "lucide-react"
 
-export function StatsOverview({ websites, pings, user }) {
-  const totalWebsites = websites.length
-  const websitesWithPings = websites.filter((site) => site.pingCount > 0)
-  const averageUptime =
-    websitesWithPings.length > 0
-      ? websitesWithPings.reduce((sum, site) => sum + site.uptimeValue, 0) / websitesWithPings.length
-      : 0
-  const activeWebsites = websites.filter((site) => site.status === "up").length
-  const totalPings = websites.reduce((sum, site) => sum + site.pingCount, 0)
-  const totalEarnings = totalPings * 0.0001
-  const listingCosts = totalWebsites * 0.001
-  const netEarnings = totalEarnings - listingCosts
+export default function StatsOverview({ websites = [], pings = [], user }) {
+  const [stats, setStats] = useState({
+    totalWebsites: 0,
+    totalPings: 0,
+    successRate: 0,
+    totalEarnings: 0,
+    avgResponseTime: 0,
+    onlineWebsites: 0,
+  })
 
-  const userPings = pings.filter((ping) => ping.uid === user?.id)
-  const successfulPings = userPings.filter((ping) => ping.is_up).length
-  const validatorSuccessRate = userPings.length > 0 ? (successfulPings / userPings.length) * 100 : 0
-  const validatorEarnings = userPings.length * 0.0001
+  useEffect(() => {
+    calculateStats()
+  }, [websites, pings, user])
 
-  const stats = user?.isVisitor
-    ? [
-        {
-          title: "Sites Validated",
-          value: userPings.length.toLocaleString(),
-          icon: Globe,
-          color: "from-blue-500 to-blue-600",
-          bgColor: "bg-blue-50 dark:bg-blue-950/20",
-          borderColor: "border-blue-200 dark:border-blue-800",
-          textColor: "text-blue-800 dark:text-blue-200",
-        },
-        {
-          title: "Success Rate",
-          value: `${validatorSuccessRate.toFixed(1)}%`,
-          icon: TrendingUp,
-          color: "from-green-500 to-green-600",
-          bgColor: "bg-green-50 dark:bg-green-950/20",
-          borderColor: "border-green-200 dark:border-green-800",
-          textColor: "text-green-800 dark:text-green-200",
-        },
-        {
-          title: "ETH Earned",
-          value: validatorEarnings.toFixed(4),
-          icon: Wallet,
-          color: "from-amber-500 to-orange-500",
-          bgColor: "bg-amber-50 dark:bg-amber-950/20",
-          borderColor: "border-amber-200 dark:border-amber-800",
-          textColor: "text-amber-800 dark:text-amber-200",
-        },
-        {
-          title: "Network Rank",
-          value: "#47",
-          icon: Users,
-          color: "from-purple-500 to-purple-600",
-          bgColor: "bg-purple-50 dark:bg-purple-950/20",
-          borderColor: "border-purple-200 dark:border-purple-800",
-          textColor: "text-purple-800 dark:text-purple-200",
-        },
-      ]
-    : [
-        {
-          title: "Websites",
-          value: totalWebsites.toLocaleString(),
-          icon: Globe,
-          color: "from-blue-500 to-blue-600",
-          bgColor: "bg-blue-50 dark:bg-blue-950/20",
-          borderColor: "border-blue-200 dark:border-blue-800",
-          textColor: "text-blue-800 dark:text-blue-200",
-        },
-        {
-          title: "Total Pings",
-          value: totalPings.toLocaleString(),
-          icon: Activity,
-          color: "from-purple-500 to-purple-600",
-          bgColor: "bg-purple-50 dark:bg-purple-950/20",
-          borderColor: "border-purple-200 dark:border-purple-800",
-          textColor: "text-purple-800 dark:text-purple-200",
-        },
-        {
-          title: "Net Earnings",
-          value: `${netEarnings >= 0 ? "+" : ""}${netEarnings.toFixed(4)} ETH`,
-          icon: Wallet,
-          color: netEarnings >= 0 ? "from-green-500 to-green-600" : "from-red-500 to-red-600",
-          bgColor: netEarnings >= 0 ? "bg-green-50 dark:bg-green-950/20" : "bg-red-50 dark:bg-red-950/20",
-          borderColor:
-            netEarnings >= 0 ? "border-green-200 dark:border-green-800" : "border-red-200 dark:border-red-800",
-          textColor: netEarnings >= 0 ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200",
-        },
-        {
-          title: "Avg Uptime",
-          value: `${averageUptime.toFixed(1)}%`,
-          icon: CheckCircle,
-          color: "from-cyan-500 to-cyan-600",
-          bgColor: "bg-cyan-50 dark:bg-cyan-950/20",
-          borderColor: "border-cyan-200 dark:border-cyan-800",
-          textColor: "text-cyan-800 dark:text-cyan-200",
-        },
-      ]
+  const calculateStats = () => {
+    if (user?.isVisitor) {
+      // Validator stats
+      const userPings = pings.filter((ping) => ping.uid === user.id)
+      const successfulPings = userPings.filter((ping) => ping.is_up)
+      const totalResponseTime = userPings.reduce((sum, ping) => sum + (ping.latency_ms || 0), 0)
 
-  return (
-    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-      {stats.map((stat, index) => (
-        <motion.div
-          key={stat.title}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: index * 0.1 }}
-        >
-          <Card
-            className={`hover:shadow-md transition-all duration-200 border-0 shadow-sm ${stat.bgColor} ${stat.borderColor}`}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                  <stat.icon className="h-4 w-4 text-current" />
-                </div>
-                <Badge variant="secondary" className="text-xs bg-secondary text-secondary-foreground">
-                  {stat.title}
-                </Badge>
+      setStats({
+        totalWebsites: 0,
+        totalPings: userPings.length,
+        successRate: userPings.length > 0 ? (successfulPings.length / userPings.length) * 100 : 0,
+        totalEarnings: userPings.length * 0.001,
+        avgResponseTime: userPings.length > 0 ? Math.round(totalResponseTime / userPings.length) : 0,
+        onlineWebsites: 0,
+      })
+    } else {
+      // Website owner stats
+      const userWebsites = websites.filter((website) => website.uid === user?.id)
+      const websitePings = pings.filter((ping) => userWebsites.some((w) => w.wid === ping.wid))
+      const successfulPings = websitePings.filter((ping) => ping.is_up)
+      const onlineWebsites = userWebsites.filter((website) => website.status === "up").length
+      const totalResponseTime = websitePings.reduce((sum, ping) => sum + (ping.latency_ms || 0), 0)
+
+      setStats({
+        totalWebsites: userWebsites.length,
+        totalPings: websitePings.length,
+        successRate: websitePings.length > 0 ? (successfulPings.length / websitePings.length) * 100 : 0,
+        totalEarnings: websitePings.length * 0.0001,
+        avgResponseTime: websitePings.length > 0 ? Math.round(totalResponseTime / websitePings.length) : 0,
+        onlineWebsites: onlineWebsites,
+      })
+    }
+  }
+
+  const MetricCard = ({ title, value, subtitle, icon: Icon, gradient, trend, badge }) => (
+    <Card className="floating-card overflow-hidden">
+      <CardContent className="p-0">
+        <div className={`h-2 bg-gradient-to-r ${gradient}`}></div>
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="space-y-1">
+              <p className="metric-label">{title}</p>
+              <div className="flex items-baseline gap-2">
+                <p className="metric-value">{value}</p>
+                {badge && (
+                  <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                    {badge}
+                  </Badge>
+                )}
               </div>
-              <div className={`text-xl font-bold ${stat.textColor}`}>{stat.value}</div>
+              {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+            </div>
+            <div className={`p-3 rounded-2xl bg-gradient-to-br ${gradient} shadow-lg`}>
+              <Icon className="h-6 w-6 text-white" />
+            </div>
+          </div>
+          {trend && (
+            <div className="flex items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <span className="text-emerald-600 font-medium">{trend}</span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  if (!user) {
+    return (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="floating-card">
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-20 loading-shimmer" />
+                    <Skeleton className="h-8 w-16 loading-shimmer" />
+                    <Skeleton className="h-3 w-24 loading-shimmer" />
+                  </div>
+                  <Skeleton className="h-12 w-12 rounded-2xl loading-shimmer" />
+                </div>
+              </div>
             </CardContent>
           </Card>
-        </motion.div>
-      ))}
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {user.isVisitor ? (
+        // Validator Stats
+        <>
+          <MetricCard
+            title="Validations"
+            value={stats.totalPings}
+            subtitle="Sites validated"
+            icon={Target}
+            gradient="from-violet-500 to-purple-600"
+            trend="+12% this week"
+          />
+          <MetricCard
+            title="Success Rate"
+            value={`${Math.round(stats.successRate)}%`}
+            subtitle="Successful pings"
+            icon={CheckCircle}
+            gradient="from-emerald-500 to-green-600"
+            badge="Excellent"
+          />
+          <MetricCard
+            title="Earnings"
+            value={`${stats.totalEarnings.toFixed(3)}`}
+            subtitle="ETH earned"
+            icon={Coins}
+            gradient="from-amber-500 to-orange-600"
+            trend={`$${(stats.totalEarnings * 2000).toFixed(2)} USD`}
+          />
+          <MetricCard
+            title="Response Time"
+            value={`${stats.avgResponseTime}`}
+            subtitle="ms average"
+            icon={Zap}
+            gradient="from-blue-500 to-cyan-600"
+            badge="Fast"
+          />
+        </>
+      ) : (
+        // Website Owner Stats
+        <>
+          <MetricCard
+            title="Websites"
+            value={stats.totalWebsites}
+            subtitle="Total monitored"
+            icon={Globe}
+            gradient="from-violet-500 to-purple-600"
+            trend="+2 this month"
+          />
+          <MetricCard
+            title="Online Sites"
+            value={stats.onlineWebsites}
+            subtitle={`${stats.totalWebsites - stats.onlineWebsites} offline`}
+            icon={CheckCircle}
+            gradient="from-emerald-500 to-green-600"
+            badge="Healthy"
+          />
+          <MetricCard
+            title="Total Pings"
+            value={stats.totalPings}
+            subtitle="Validation checks"
+            icon={BarChart3}
+            gradient="from-blue-500 to-cyan-600"
+            trend="+156 today"
+          />
+          <MetricCard
+            title="Uptime"
+            value={`${Math.round(stats.successRate)}%`}
+            subtitle="Overall availability"
+            icon={TrendingUp}
+            gradient="from-amber-500 to-orange-600"
+            badge="Stable"
+          />
+        </>
+      )}
     </div>
   )
 }

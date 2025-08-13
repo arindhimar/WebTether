@@ -1,307 +1,133 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
+import { Card, CardContent } from "./ui/card"
 import { Button } from "./ui/button"
-import { Badge } from "./ui/badge"
-import { Progress } from "./ui/progress"
-import { Alert, AlertDescription } from "./ui/alert"
 import { Skeleton } from "./ui/skeleton"
-import {
-  Wallet,
-  RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  History,
-  Coins,
-  AlertCircle,
-  CheckCircle,
-  DollarSign,
-} from "lucide-react"
-import { api } from "../services/api"
+import { useAuth } from "../contexts/AuthContext"
+import { Wallet, TrendingUp, Eye, EyeOff, Sparkles } from "lucide-react"
 
-export function WalletBalance() {
-  const [balance, setBalance] = useState(null)
-  const [transactions, setTransactions] = useState([])
+export default function WalletBalance() {
+  const { user } = useAuth()
+  const [balance, setBalance] = useState(0)
+  const [pendingBalance, setPendingBalance] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [showTransactions, setShowTransactions] = useState(false)
-  const [error, setError] = useState(null)
+  const [showBalance, setShowBalance] = useState(true)
 
-  const fetchWalletData = async (showRefreshToast = false) => {
+  useEffect(() => {
+    if (user) {
+      loadBalance()
+    }
+  }, [user])
+
+  const loadBalance = async () => {
     try {
-      setIsRefreshing(true)
-      setError(null)
+      setIsLoading(true)
+      await new Promise((resolve) => setTimeout(resolve, 800))
 
-      const [balanceData, transactionData] = await Promise.all([api.getWalletBalance(), api.getTransactionHistory()])
+      // Mock balance based on user type
+      const mockBalance = user?.isVisitor ? 0.0234 : 0.0156
+      const mockPending = user?.isVisitor ? 0.0045 : 0.0023
 
-      setBalance(balanceData)
-      setTransactions(transactionData.transactions || [])
-
-      if (showRefreshToast) {
-        console.log("Wallet data refreshed successfully")
-      }
+      setBalance(mockBalance)
+      setPendingBalance(mockPending)
     } catch (error) {
-      console.error("Failed to fetch wallet data:", error)
-      setError(error.message || "Failed to load wallet data")
+      console.error("Error loading balance:", error)
     } finally {
-      setIsRefreshing(false)
+      setIsLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchWalletData().finally(() => setIsLoading(false))
-  }, [])
-
-  // Calculate earnings vs spending for new economic model
-  const calculateEarningsVsSpending = () => {
-    if (!transactions.length) return { totalEarnings: 0, totalSpending: 0, netEarnings: 0 }
-
-    let totalEarnings = 0
-    let totalSpending = 0
-
-    transactions.forEach((tx) => {
-      const amount = Number.parseFloat(tx.amount || 0)
-      if (tx.type === "ping_payment") {
-        totalEarnings += amount // Pings now earn money
-      } else if (tx.type === "website_creation") {
-        totalSpending += amount // Website creation costs money
-      }
-    })
-
-    return {
-      totalEarnings,
-      totalSpending,
-      netEarnings: totalEarnings - totalSpending,
-    }
+  const toggleBalanceVisibility = () => {
+    setShowBalance(!showBalance)
   }
 
   if (isLoading) {
     return (
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-green-50/20">
-        <CardHeader className="pb-4">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-48" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <div className="grid grid-cols-2 gap-3">
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
+      <Card className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 border-0 shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 animate-pulse" />
+        <CardContent className="p-6 relative">
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="h-6 w-20 bg-white/10" />
+            <Skeleton className="h-8 w-8 rounded-full bg-white/10" />
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-32 bg-white/10" />
+            <Skeleton className="h-4 w-24 bg-white/10" />
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-6 w-16 bg-white/10 rounded-full" />
+              <Skeleton className="h-6 w-20 bg-white/10 rounded-full" />
+            </div>
           </div>
         </CardContent>
       </Card>
     )
   }
-
-  if (error || !balance) {
-    return (
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-red-50/20">
-        <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
-            <AlertCircle className="h-6 w-6 text-red-600" />
-          </div>
-          <h3 className="font-semibold mb-2">Failed to Load Wallet</h3>
-          <p className="text-sm text-muted-foreground mb-4">{error || "Unable to fetch wallet data"}</p>
-          <Button size="sm" variant="outline" onClick={() => fetchWalletData()} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-            Try Again
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const { totalEarnings, totalSpending, netEarnings } = calculateEarningsVsSpending()
 
   return (
-    <div className="space-y-4">
-      {/* Main Balance Card */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-green-50/20">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100">
-                <Wallet className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Earnings Wallet</CardTitle>
-                <CardDescription>Earn rewards by validating websites</CardDescription>
-              </div>
+    <Card className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 border-0 shadow-2xl">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 animate-pulse" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-400/20 to-purple-400/20 rounded-full blur-2xl" />
+
+      <CardContent className="p-6 relative">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+              <Wallet className="h-4 w-4 text-white" />
             </div>
-            <Button variant="outline" size="sm" onClick={() => fetchWalletData(true)} disabled={isRefreshing}>
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-            </Button>
+            <span className="text-white/80 font-medium text-sm">Wallet Balance</span>
           </div>
-        </CardHeader>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleBalanceVisibility}
+            className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/10 rounded-xl"
+          >
+            {showBalance ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </Button>
+        </div>
 
-        <CardContent className="space-y-6">
-          {/* New Economic Model Notice */}
-          <Alert className="bg-green-50 border-green-200">
-            <Coins className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              <strong>💰 New Economic Model:</strong> Pay to add websites • Earn rewards for pinging • Help secure the
-              network!
-            </AlertDescription>
-          </Alert>
-
-          {/* Balance Display */}
-          <div className="space-y-4">
-            <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-200">
-              <CardContent className="p-4 text-center">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <DollarSign className="h-6 w-6 text-green-600" />
-                  <div className="text-3xl font-bold text-green-700">{balance.eth_balance}</div>
-                  <span className="text-lg font-semibold text-green-600">ETH</span>
-                </div>
-                <div className="text-sm text-muted-foreground">≈ ${balance.usd_value} USD</div>
-              </CardContent>
-            </Card>
-
-            {/* Wallet Address */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Wallet Address</label>
-              <div className="font-mono text-xs bg-muted/30 p-3 rounded-lg border break-all">
-                {balance.wallet_address}
-              </div>
-            </div>
-
-            {/* Updated Stats Grid - Earnings vs Spending */}
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="bg-green-50 border-green-200 hover:shadow-sm transition-shadow">
-                <CardContent className="p-3 text-center">
-                  <div className="flex items-center justify-center gap-1 text-green-600 mb-2">
-                    <TrendingUp className="h-3 w-3" />
-                    <span className="text-xs font-medium">Total Earned</span>
-                  </div>
-                  <div className="font-bold text-sm text-green-800">+{totalEarnings.toFixed(6)} ETH</div>
-                  <div className="text-xs text-green-600">From {balance.total_pings} pings</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-red-50 border-red-200 hover:shadow-sm transition-shadow">
-                <CardContent className="p-3 text-center">
-                  <div className="flex items-center justify-center gap-1 text-red-600 mb-2">
-                    <TrendingDown className="h-3 w-3" />
-                    <span className="text-xs font-medium">Total Spent</span>
-                  </div>
-                  <div className="font-bold text-sm text-red-800">-{totalSpending.toFixed(6)} ETH</div>
-                  <div className="text-xs text-red-600">Website creation</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Net Earnings Display */}
-            <Card
-              className={`transition-all ${netEarnings >= 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}
-            >
-              <CardContent className="p-4 text-center">
-                <div
-                  className={`flex items-center justify-center gap-2 mb-2 ${netEarnings >= 0 ? "text-green-600" : "text-red-600"}`}
-                >
-                  {netEarnings >= 0 ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                  <span className="text-sm font-medium">Net Earnings</span>
-                </div>
-                <div className={`font-bold text-lg ${netEarnings >= 0 ? "text-green-800" : "text-red-800"}`}>
-                  {netEarnings >= 0 ? "+" : ""}
-                  {netEarnings.toFixed(6)} ETH
-                </div>
-                <div className={`text-xs mb-2 ${netEarnings >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  {netEarnings >= 0 ? "You're profitable! 🎉" : "Keep pinging to earn more! 💪"}
-                </div>
-                <Progress
-                  value={Math.min(Math.abs(netEarnings / 0.01) * 100, 100)}
-                  className={`h-2 ${netEarnings >= 0 ? "bg-green-100" : "bg-red-100"}`}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Transaction History Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTransactions(!showTransactions)}
-              className="w-full"
-            >
-              <History className="h-4 w-4 mr-2" />
-              {showTransactions ? "Hide" : "Show"} Transaction History
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Transaction History */}
-      {showTransactions && (
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-blue-50/20">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <History className="h-5 w-5" />
-              Transaction History
-            </CardTitle>
-            <CardDescription>Your earnings and spending activity</CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            {transactions.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <History className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="font-semibold mb-2">No Transactions Yet</h3>
-                <p className="text-sm text-muted-foreground mb-1">Start pinging websites to earn your first rewards!</p>
-                <p className="text-xs text-muted-foreground">Each successful ping earns you ETH</p>
-              </div>
+        {/* Main Balance */}
+        <div className="space-y-3">
+          <div className="flex items-baseline gap-2">
+            {showBalance ? (
+              <>
+                <span className="text-3xl font-bold text-white">{balance.toFixed(4)}</span>
+                <span className="text-lg font-semibold text-purple-200">ETH</span>
+              </>
             ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {transactions.map((tx, index) => {
-                  const isEarning = tx.type === "ping_payment"
-                  return (
-                    <Card key={index} className="hover:shadow-sm transition-shadow">
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="text-xs font-mono">
-                                {tx.tx_hash}
-                              </Badge>
-                              <Badge
-                                className={`text-xs ${
-                                  isEarning
-                                    ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                    : "bg-red-100 text-red-800 hover:bg-red-100"
-                                }`}
-                              >
-                                {isEarning ? "EARNED" : "SPENT"}
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(tx.timestamp).toLocaleString()}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div
-                              className={`font-mono text-sm font-medium ${
-                                isEarning ? "text-green-600" : "text-red-600"
-                              }`}
-                            >
-                              {isEarning ? "+" : "-"}
-                              {tx.amount} ETH
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {isEarning ? "Ping reward" : "Website creation"}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+              <span className="text-3xl font-bold text-white">••••••</span>
+            )}
+          </div>
+
+          {showBalance && (
+            <div className="flex items-center gap-1 text-sm text-purple-200">
+              <TrendingUp className="h-3 w-3" />
+              <span>≈ ${(balance * 2000).toFixed(2)} USD</span>
+            </div>
+          )}
+
+          {/* Pending Balance & Status */}
+          <div className="flex items-center gap-3 pt-2">
+            {pendingBalance > 0 && (
+              <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-xs text-amber-200 font-medium">
+                  {showBalance ? `${pendingBalance.toFixed(4)} ETH pending` : "••• pending"}
+                </span>
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30">
+              <Sparkles className="w-3 h-3 text-emerald-400" />
+              <span className="text-xs text-emerald-200 font-medium">{user?.isVisitor ? "Validator" : "Owner"}</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

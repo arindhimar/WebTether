@@ -3,113 +3,129 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "./ui/card"
 import { Button } from "./ui/button"
-import { Badge } from "./ui/badge"
 import { Skeleton } from "./ui/skeleton"
-import { Wallet, RefreshCw, TrendingUp, AlertCircle, DollarSign, Zap } from "lucide-react"
-import { api } from "../services/api"
+import { useAuth } from "../contexts/AuthContext"
+import { Wallet, TrendingUp, Eye, EyeOff, Sparkles } from "lucide-react"
 
-export function WalletBalanceWidget({ className = "" }) {
-  const [balance, setBalance] = useState(null)
+export function WalletBalanceWidget() {
+  const { user } = useAuth()
+  const [balance, setBalance] = useState(0)
+  const [pendingBalance, setPendingBalance] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [error, setError] = useState(null)
+  const [showBalance, setShowBalance] = useState(true)
 
-  const fetchBalance = async (showRefreshToast = false) => {
+  useEffect(() => {
+    if (user) {
+      loadBalance()
+    }
+  }, [user])
+
+  const loadBalance = async () => {
     try {
-      setIsRefreshing(true)
-      setError(null)
+      setIsLoading(true)
+      await new Promise((resolve) => setTimeout(resolve, 800))
 
-      const balanceData = await api.getWalletBalance()
-      setBalance(balanceData)
+      // Mock balance based on user type
+      const mockBalance = user?.isVisitor ? 0.0234 : 0.0156
+      const mockPending = user?.isVisitor ? 0.0045 : 0.0023
 
-      if (showRefreshToast) {
-        console.log("Balance refreshed successfully")
-      }
+      setBalance(mockBalance)
+      setPendingBalance(mockPending)
     } catch (error) {
-      console.error("Failed to fetch balance:", error)
-      setError(error.message || "Failed to load balance")
+      console.error("Error loading balance:", error)
     } finally {
-      setIsRefreshing(false)
+      setIsLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchBalance().finally(() => setIsLoading(false))
-  }, [])
+  const toggleBalanceVisibility = () => {
+    setShowBalance(!showBalance)
+  }
 
   if (isLoading) {
     return (
-      <Card className={`border-0 shadow-sm bg-green-50 ${className}`}>
-        <CardContent className="p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-6 w-6 rounded-full" />
+      <Card className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 border-0 shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 animate-pulse" />
+        <CardContent className="p-6 relative">
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="h-6 w-20 bg-white/10" />
+            <Skeleton className="h-8 w-8 rounded-full bg-white/10" />
           </div>
-          <Skeleton className="h-6 w-24" />
-          <Skeleton className="h-3 w-16" />
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error || !balance) {
-    return (
-      <Card className={`border-0 shadow-sm bg-red-50 ${className}`}>
-        <CardContent className="p-4 text-center">
-          <AlertCircle className="h-5 w-5 text-red-600 mx-auto mb-2" />
-          <p className="text-sm font-medium text-red-800 mb-1">Balance Error</p>
-          <p className="text-xs text-red-600 mb-2">{error || "Failed to load"}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => fetchBalance()}
-            disabled={isRefreshing}
-            className="text-red-600 border-red-300 hover:bg-red-50 h-6 text-xs"
-          >
-            <RefreshCw className={`h-3 w-3 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
-            Retry
-          </Button>
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-32 bg-white/10" />
+            <Skeleton className="h-4 w-24 bg-white/10" />
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-6 w-16 bg-white/10 rounded-full" />
+              <Skeleton className="h-6 w-20 bg-white/10 rounded-full" />
+            </div>
+          </div>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <Card className={`border-0 shadow-sm bg-green-50 hover:shadow-md transition-all duration-200 ${className}`}>
-      <CardContent className="p-4 space-y-2">
-        <div className="flex items-center justify-between">
+    <Card className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 border-0 shadow-2xl">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 animate-pulse" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-400/20 to-purple-400/20 rounded-full blur-2xl" />
+
+      <CardContent className="p-6 relative">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-green-800">Wallet</span>
+            <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+              <Wallet className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-white/80 font-medium text-sm">Wallet Balance</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => fetchBalance(true)}
-            disabled={isRefreshing}
-            className="h-6 w-6 p-0 hover:bg-green-100"
+            onClick={toggleBalanceVisibility}
+            className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/10 rounded-xl"
           >
-            <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""} text-green-600`} />
+            {showBalance ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-green-600" />
-          <span className="text-xl font-bold text-green-700">{balance.eth_balance}</span>
-          <span className="text-sm font-semibold text-green-600">ETH</span>
-        </div>
-
-        <p className="text-xs text-muted-foreground">≈ ${balance.usd_value} USD</p>
-
-        <div className="flex items-center justify-between pt-1 border-t border-green-200">
-          <div className="flex items-center gap-1">
-            <TrendingUp className="h-3 w-3 text-green-500" />
-            <span className="text-xs text-muted-foreground">Pings:</span>
+        {/* Main Balance */}
+        <div className="space-y-3">
+          <div className="flex items-baseline gap-2">
+            {showBalance ? (
+              <>
+                <span className="text-3xl font-bold text-white">{balance.toFixed(4)}</span>
+                <span className="text-lg font-semibold text-purple-200">ETH</span>
+              </>
+            ) : (
+              <span className="text-3xl font-bold text-white">••••••</span>
+            )}
           </div>
-          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300 h-5">
-            <Zap className="h-3 w-3 mr-1" />
-            {balance.total_pings}
-          </Badge>
+
+          {showBalance && (
+            <div className="flex items-center gap-1 text-sm text-purple-200">
+              <TrendingUp className="h-3 w-3" />
+              <span>≈ ${(balance * 2000).toFixed(2)} USD</span>
+            </div>
+          )}
+
+          {/* Pending Balance & Status */}
+          <div className="flex items-center gap-3 pt-2">
+            {pendingBalance > 0 && (
+              <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-xs text-amber-200 font-medium">
+                  {showBalance ? `${pendingBalance.toFixed(4)} ETH pending` : "••• pending"}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30">
+              <Sparkles className="w-3 h-3 text-emerald-400" />
+              <span className="text-xs text-emerald-200 font-medium">{user?.isVisitor ? "Validator" : "Owner"}</span>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
