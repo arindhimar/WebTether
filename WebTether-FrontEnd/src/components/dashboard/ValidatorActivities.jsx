@@ -6,68 +6,100 @@ import { Badge } from "../ui/badge"
 import { Button } from "../ui/button"
 import { ScrollArea } from "../ui/scroll-area"
 import { Activity, CheckCircle, XCircle, Clock, Coins, RefreshCw, ExternalLink, TrendingUp } from "lucide-react"
+import { pingAPI } from "../../services/api"
 
-export function ValidatorActivities() {
+export function ValidatorActivities({ pings = [], websites = [], user }) {
   const [activities, setActivities] = useState([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Load activities from localStorage and generate some if empty
   useEffect(() => {
-    loadActivities()
-  }, [])
+    console.log("ValidatorActivities - Props received:", {
+      pingsCount: pings.length,
+      websitesCount: websites.length,
+      userId: user?.id,
+      isVisitor: user?.isVisitor,
+    })
 
-  const loadActivities = () => {
-    const savedHistory = JSON.parse(localStorage.getItem("pingHistory") || "[]")
-
-    if (savedHistory.length === 0) {
-      // Generate some mock activities if none exist
-      const mockActivities = generateMockActivities()
-      setActivities(mockActivities)
-      localStorage.setItem("pingHistory", JSON.stringify(mockActivities))
-    } else {
-      setActivities(savedHistory.slice(0, 20)) // Show last 20 activities
+    if (user && pings.length > 0) {
+      generateActivitiesFromPings()
     }
-  }
+  }, [pings, websites, user])
 
-  const generateMockActivities = () => {
-    const websites = [
-      "https://google.com",
-      "https://github.com",
-      "https://stackoverflow.com",
-      "https://reddit.com",
-      "https://youtube.com",
-    ]
-
-    const activities = []
-    const now = new Date()
-
-    for (let i = 0; i < 15; i++) {
-      const timestamp = new Date(now.getTime() - i * 5 * 60 * 1000) // 5 minutes apart
-      const success = Math.random() > 0.15 // 85% success rate
-      const website = websites[Math.floor(Math.random() * websites.length)]
-      const responseTime = Math.floor(Math.random() * 500) + 50
-      const earnings = success ? 0.0001 : 0
-
-      activities.push({
-        id: `activity_${i}`,
-        success,
-        responseTime,
-        timestamp: timestamp.toISOString(),
-        txHash: `TX-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
-        earnings,
-        website,
-      })
-    }
-
-    return activities
-  }
-
-  const handleRefresh = () => {
+  const generateActivitiesFromPings = () => {
+    console.log("ValidatorActivities - Generating activities from pings...")
     setIsLoading(true)
-    setTimeout(() => {
-      loadActivities()
+
+    try {
+      // Filter pings for this validator (user who performed the ping)
+      const validatorPings = pings.filter((ping) => {
+        const matches = ping.checked_by_uid === user.id
+        console.log(`Ping ${ping.pid}: checked_by_uid=${ping.checked_by_uid} vs user.id=${user.id} = ${matches}`)
+        return matches
+      })
+
+      console.log(`ValidatorActivities - Found ${validatorPings.length} pings for validator ${user.id}`)
+
+      // Sort by timestamp (newest first)
+      const sortedPings = validatorPings.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.created_at)
+        const timeB = new Date(b.timestamp || b.created_at)
+        return timeB - timeA
+      })
+
+      // Convert pings to activities
+      const generatedActivities = sortedPings.map((ping) => {
+        // Try to find the website for this ping
+        const website = websites.find((w) => w.wid === ping.wid)
+        const websiteUrl = website?.url || website?.name || `Website ID: ${ping.wid}`
+
+        const activity = {
+          id: ping.pid,
+          success: ping.is_up,
+          responseTime: ping.latency_ms,
+          timestamp: ping.timestamp || ping.created_at,
+          txHash: ping.tx_hash,
+          earnings: ping.fee_paid_numeric || 0,
+          website: websiteUrl,
+          region: ping.region,
+          source: ping.source,
+        }
+
+        console.log("ValidatorActivities - Generated activity:", activity)
+        return activity
+      })
+
+      console.log(`ValidatorActivities - Generated ${generatedActivities.length} activities:`, generatedActivities)
+      setActivities(generatedActivities)
+    } catch (error) {
+      console.error("ValidatorActivities - Error generating activities:", error)
+      setActivities([])
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
+  }
+
+  const handleRefresh = async () => {
+    console.log("ValidatorActivities - Refreshing data...")
+    setIsLoading(true)
+
+    try {
+      // Reload ping data
+      const pingsResponse = await pingAPI.getAllPings()
+      const pingsData = Array.isArray(pingsResponse) ? pingsResponse : pingsResponse.pings || []
+
+      console.log("ValidatorActivities - Refreshed pings:", pingsData.length)
+
+      // Trigger parent component to update
+      if (window.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent("refreshDashboardData"))
+      }
+    } catch (error) {
+      console.error("ValidatorActivities - Error refreshing:", error)
+    } finally {
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 1000)
+    }
   }
 
   const getTimeAgo = (timestamp) => {
@@ -81,6 +113,7 @@ export function ValidatorActivities() {
       if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
       return `${Math.floor(diffInMinutes / 1440)}d ago`
     } catch (error) {
+      console.error("ValidatorActivities - Error formatting time:", error)
       return "Unknown"
     }
   }
@@ -88,6 +121,13 @@ export function ValidatorActivities() {
   const totalEarnings = activities.reduce((sum, activity) => sum + (activity.earnings || 0), 0)
   const successRate =
     activities.length > 0 ? ((activities.filter((a) => a.success).length / activities.length) * 100).toFixed(1) : 0
+
+  console.log("ValidatorActivities - Render state:", {
+    activitiesCount: activities.length,
+    isLoading,
+    totalEarnings,
+    successRate,
+  })
 
   return (
     <Card className="bg-card border-border">
@@ -140,11 +180,25 @@ export function ValidatorActivities() {
         {/* Activities List */}
         <ScrollArea className="h-[400px]">
           <div className="space-y-2">
-            {activities.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+                <p>Loading validator activities...</p>
+              </div>
+            ) : activities.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No validator activities yet</p>
                 <p className="text-sm">Start pinging websites to see your history here</p>
+                <div className="mt-4 text-xs bg-muted/50 p-3 rounded-lg">
+                  <p>
+                    <strong>Debug Info:</strong>
+                  </p>
+                  <p>User ID: {user?.id}</p>
+                  <p>Is Visitor: {user?.isVisitor ? "Yes" : "No"}</p>
+                  <p>Total Pings: {pings.length}</p>
+                  <p>Websites: {websites.length}</p>
+                </div>
               </div>
             ) : (
               activities.map((activity, index) => (
@@ -163,20 +217,27 @@ export function ValidatorActivities() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-card-foreground truncate">{activity.website}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(activity.website, "_blank")}
-                          className="h-5 w-5 p-0"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </Button>
+                        {activity.website.startsWith("http") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(activity.website, "_blank")}
+                            className="h-5 w-5 p-0"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </Button>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           <span>{activity.responseTime}ms</span>
                         </div>
+                        {activity.region && (
+                          <div className="flex items-center gap-1">
+                            <span>📍 {activity.region}</span>
+                          </div>
+                        )}
                         <div className="font-mono text-xs">{activity.txHash}</div>
                       </div>
                     </div>
@@ -211,9 +272,8 @@ export function ValidatorActivities() {
               variant="outline"
               size="sm"
               onClick={() => {
-                // Clear history
-                localStorage.removeItem("pingHistory")
                 setActivities([])
+                console.log("ValidatorActivities - Activities cleared")
               }}
               className="bg-transparent border-border text-foreground hover:bg-accent"
             >

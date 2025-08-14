@@ -13,25 +13,17 @@
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary-foreground: 222.2 84% 4.9%;
     --muted: 210 40% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.75rem;
-    --sidebar: 0 0% 98%;
-    --sidebar-foreground: 222.2 47.4% 11.2%;
-    --sidebar-primary: 221.2 83.2% 53.3%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 221.2 83.2% 53.3%;
   }
 
   .dark {
@@ -53,15 +45,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 217.2 91.2% 59.8%;
-    --sidebar: 220 13% 18%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217.2 91.2% 59.8%;
-    --sidebar-primary-foreground: 222.2 84% 4.9%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --ring: 224.3 76.3% 94.1%;
   }
 }
 
@@ -71,216 +55,58 @@
   }
   body {
     @apply bg-background text-foreground;
-    @apply min-h-screen w-full;
-  }
-  #root {
-    @apply min-h-screen w-full max-w-none m-0 p-0 bg-background text-foreground;
-  }
-
-  /* Custom scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-primary/30 rounded-full hover:bg-primary/50 transition-colors;
-  }
-
-  /* For Firefox */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary) / 0.3) transparent;
-  }
-
-  /* Fix double scrollbar issue */
-  html,
-  body,
-  #root {
-    @apply overflow-x-hidden;
-    height: 100%;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  #root {
-    @apply min-h-screen w-full max-w-none m-0 p-0;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-  }
-
-  /* Add smooth scrolling for better UX */
-  html {
-    scroll-behavior: smooth;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-@layer components {
-  .animate-in-card {
-    @apply transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:scale-[1.02] hover:bg-accent/30;
+/* Custom animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
   }
+  50% {
+    transform: translateY(-10px);
+  }
+}
 
-  .animate-in-button {
-    @apply transition-all duration-200 hover:scale-105 active:scale-95;
-  }
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
 
-  .animate-in-icon {
-    @apply transition-all duration-300 hover:text-primary;
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px hsl(var(--primary) / 0.5);
   }
+  50% {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.8);
+  }
+}
 
-  .animate-in-menu-item {
-    @apply transition-all duration-200 hover:translate-x-1;
-  }
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
 
-  .animate-pulse-subtle {
-    @apply animate-pulse-glow;
-  }
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
 
-  .animate-hover-bounce {
-    @apply hover:animate-bounce-subtle;
-  }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
 
-  .animate-hover-spin {
-    @apply hover:animate-spin-slow;
-  }
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
 
-  .animate-page-transition {
-    @apply animate-fade-in;
-  }
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 4px;
+}
 
-  .animate-card-appear {
-    @apply animate-slide-in;
-  }
-
-  .animate-button-press {
-    @apply active:animate-scale-up;
-  }
-
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent;
-  }
-
-  .gradient-border {
-    @apply border border-transparent bg-gradient-to-r from-primary to-blue-400 bg-clip-border;
-  }
-
-  .glass-effect {
-    @apply bg-white/10 backdrop-blur-md dark:bg-black/10;
-  }
-
-  .btn-glow {
-    @apply relative overflow-hidden;
-  }
-
-  .btn-glow::after {
-    @apply content-[''] absolute top-0 left-[-100%] w-full h-full bg-gradient-shine;
-    animation: shimmer 2s infinite;
-  }
-
-  .card-3d {
-    @apply transition-all duration-500 hover:shadow-glow;
-    transform-style: preserve-3d;
-    perspective: 1000px;
-  }
-
-  .card-3d:hover {
-    transform: rotateY(5deg) rotateX(5deg);
-  }
-
-  .ripple-effect {
-    @apply relative overflow-hidden;
-  }
-
-  .ripple-effect::after {
-    @apply content-[''] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-primary/30;
-    animation: ripple 0.6s linear forwards;
-  }
-
-  .nav-item {
-    @apply relative;
-  }
-
-  .nav-item::after {
-    @apply content-[''] absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300;
-  }
-
-  .nav-item:hover::after {
-    @apply w-full;
-  }
-
-  .floating-element {
-    @apply animate-float;
-  }
-
-  .wave-animation {
-    @apply animate-wave;
-  }
-
-  .glow-on-hover {
-    @apply transition-shadow duration-300 hover:shadow-glow;
-  }
-
-  .glow-text {
-    @apply text-primary transition-all duration-300 hover:text-opacity-80 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)];
-  }
-
-  .mesh-gradient {
-    @apply bg-gradient-mesh;
-  }
-
-  /* Dark mode specific styles */
-  .dark-card {
-    @apply bg-card border-border;
-  }
-
-  .dark-bg {
-    @apply bg-background;
-  }
-
-  .dark-text {
-    @apply text-foreground;
-  }
-
-  .dark-muted {
-    @apply text-muted-foreground;
-  }
-
-  .dark-border {
-    @apply border-border;
-  }
-
-  .theme-card {
-    @apply bg-card text-card-foreground border-border;
-  }
-
-  .theme-button {
-    @apply bg-background text-foreground border-border hover:bg-accent hover:text-accent-foreground;
-  }
-
-  .theme-input {
-    @apply bg-background text-foreground border-border placeholder:text-muted-foreground;
-  }
-
-  .theme-muted {
-    @apply text-muted-foreground;
-  }
-
-  .theme-primary {
-    @apply bg-primary text-primary-foreground;
-  }
-
-  .theme-secondary {
-    @apply bg-secondary text-secondary-foreground;
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.8);
 }

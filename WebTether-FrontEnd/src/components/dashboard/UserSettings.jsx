@@ -1,15 +1,25 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
-import { Alert, AlertDescription } from "../ui/alert"
 import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../hooks/use-toast"
 import { LoadingSpinner } from "./LoadingSpinner"
-import { Save, CheckCircle, AlertTriangle, Copy, ExternalLink, Code, Server, Globe, Zap } from "lucide-react"
+import {
+  Save,
+  CheckCircle,
+  AlertTriangle,
+  Copy,
+  ExternalLink,
+  Code,
+  Server,
+  Globe,
+  ChevronRight,
+  Play,
+} from "lucide-react"
 import { validateCloudflareWorkerUrl, isCloudflareWorkerConfigured } from "../../utils/cloudflareAgent"
 
 export default function UserSettings() {
@@ -25,6 +35,7 @@ export default function UserSettings() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [urlValidation, setUrlValidation] = useState({ isValid: true, error: "" })
+  const [showCode, setShowCode] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -42,7 +53,6 @@ export default function UserSettings() {
       [field]: value,
     }))
 
-    // Validate URL in real-time
     if (field === "agentUrl") {
       const validation = validateCloudflareWorkerUrl(value)
       setUrlValidation(validation)
@@ -53,7 +63,6 @@ export default function UserSettings() {
     try {
       setIsSaving(true)
 
-      // Validate URL before saving
       const validation = validateCloudflareWorkerUrl(settings.agentUrl)
       if (!validation.isValid) {
         toast({
@@ -64,10 +73,8 @@ export default function UserSettings() {
         return
       }
 
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Update user context
       await updateUser({
         agent_url: settings.agentUrl,
         agent_name: settings.agentName,
@@ -100,10 +107,9 @@ export default function UserSettings() {
 
   const isConfigured = isCloudflareWorkerConfigured(user)
 
-  const cloudflareWorkerCode = `// Cloudflare Worker for WebTether Validation
+  const cloudflareWorkerCode = `// Cloudflare Worker for WebTether
 export default {
   async fetch(request, env, ctx) {
-    // Handle CORS preflight requests
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 200,
@@ -118,7 +124,6 @@ export default {
     try {
       const url = new URL(request.url);
       
-      // Health check endpoint
       if (url.pathname === '/health') {
         return new Response(JSON.stringify({ 
           status: 'healthy', 
@@ -132,7 +137,6 @@ export default {
         });
       }
 
-      // Ping validation endpoint
       if (url.pathname === '/validate' && request.method === 'POST') {
         const body = await request.json();
         const { targetUrl, timeout = 5000 } = body;
@@ -221,96 +225,111 @@ export default {
 };`
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      <div className="grid gap-8">
-        {/* Cloudflare Worker Configuration */}
-        <Card className="modern-card">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg">
-                <Server className="h-5 w-5 text-white" />
-              </div>
-              Cloudflare Worker Configuration
-            </CardTitle>
-            <CardDescription>
-              Configure your Cloudflare Worker to validate websites and earn ETH rewards
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Status Alert */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-4 sm:p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2 mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Validator Settings</h1>
+          <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+            Configure your Cloudflare Worker to start earning ETH
+          </p>
+        </div>
+
+        {/* Status Card */}
+        <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+          <CardContent className="p-4 sm:p-6">
             {isConfigured ? (
-              <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800 dark:text-green-200">
-                  Your Cloudflare Worker is configured and ready to validate websites!
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-800 dark:text-amber-200">
-                  Configure your Cloudflare Worker to start earning ETH from website validations.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Configuration Form */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="agentUrl" className="text-sm font-medium">
-                  Worker URL *
-                </Label>
-                <Input
-                  id="agentUrl"
-                  value={settings.agentUrl}
-                  onChange={(e) => handleInputChange("agentUrl", e.target.value)}
-                  placeholder="https://your-worker.your-subdomain.workers.dev"
-                  className={`input-modern h-12 ${!urlValidation.isValid ? "border-red-500 focus:border-red-500" : ""}`}
-                />
-                {!urlValidation.isValid && <p className="text-sm text-red-600">{urlValidation.error}</p>}
-                <p className="text-sm text-muted-foreground">
-                  Your Cloudflare Worker URL (must end with .workers.dev or .workers.cloudflare.com)
-                </p>
+              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-200 dark:border-green-800">
+                <div className="flex-shrink-0">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-green-800 dark:text-green-200 text-sm sm:text-base">
+                    Validator Active
+                  </h3>
+                  <p className="text-green-700 dark:text-green-300 text-xs sm:text-sm">
+                    Your worker is configured and earning ETH
+                  </p>
+                </div>
               </div>
+            ) : (
+              <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                <div className="flex-shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-200 text-sm sm:text-base">
+                    Setup Required
+                  </h3>
+                  <p className="text-amber-700 dark:text-amber-300 text-xs sm:text-sm">
+                    Configure your worker to start earning
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-              <div className="space-y-2">
+        {/* Configuration Form */}
+        <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Server className="h-5 w-5 text-blue-600" />
+              Worker Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <Label htmlFor="agentUrl" className="text-sm font-medium">
+                Worker URL *
+              </Label>
+              <Input
+                id="agentUrl"
+                value={settings.agentUrl}
+                onChange={(e) => handleInputChange("agentUrl", e.target.value)}
+                placeholder="https://your-worker.workers.dev"
+                className={`h-12 text-base ${!urlValidation.isValid ? "border-red-500" : ""}`}
+              />
+              {!urlValidation.isValid && <p className="text-sm text-red-600">{urlValidation.error}</p>}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-3">
                 <Label htmlFor="agentName" className="text-sm font-medium">
-                  Worker Name (Optional)
+                  Worker Name
                 </Label>
                 <Input
                   id="agentName"
                   value={settings.agentName}
                   onChange={(e) => handleInputChange("agentName", e.target.value)}
-                  placeholder="My WebTether Validator"
-                  className="input-modern h-12"
+                  placeholder="My Validator"
+                  className="h-12 text-base"
                 />
-                <p className="text-sm text-muted-foreground">A friendly name for your validator worker</p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="agentDescription" className="text-sm font-medium">
-                  Description (Optional)
+                  Description
                 </Label>
                 <Input
                   id="agentDescription"
                   value={settings.agentDescription}
                   onChange={(e) => handleInputChange("agentDescription", e.target.value)}
-                  placeholder="High-performance validator in US-East region"
-                  className="input-modern h-12"
+                  placeholder="US-East validator"
+                  className="h-12 text-base"
                 />
-                <p className="text-sm text-muted-foreground">Brief description of your validator setup</p>
               </div>
             </div>
 
             <Button
               onClick={handleSaveSettings}
               disabled={isSaving || !urlValidation.isValid}
-              className="w-full btn-primary h-12 rounded-xl"
+              className="w-full h-12 text-base bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             >
               {isSaving ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Saving Configuration...
+                  Saving...
                 </>
               ) : (
                 <>
@@ -322,110 +341,66 @@ export default {
           </CardContent>
         </Card>
 
-        {/* Setup Instructions */}
-        <Card className="modern-card">
+        {/* Quick Setup Steps */}
+        <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg">
-                <Code className="h-5 w-5 text-white" />
-              </div>
-              Setup Instructions
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Play className="h-5 w-5 text-green-600" />
+              Quick Setup
             </CardTitle>
-            <CardDescription>Follow these steps to deploy your Cloudflare Worker validator</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Step-by-step guide */}
-            <div className="space-y-4">
-              <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                  1
-                </div>
-                <div>
-                  <h4 className="font-semibold text-foreground">Create Cloudflare Worker</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Go to Cloudflare Dashboard → Workers & Pages → Create Application → Create Worker
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                  2
-                </div>
-                <div>
-                  <h4 className="font-semibold text-foreground">Deploy Worker Code</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Copy the code below and paste it into your Cloudflare Worker editor
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                  3
-                </div>
-                <div>
-                  <h4 className="font-semibold text-foreground">Configure URL</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Copy your Worker URL and paste it in the configuration form above
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                  4
-                </div>
-                <div>
-                  <h4 className="font-semibold text-foreground">Start Earning</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Your validator will automatically start receiving ping requests and earning ETH
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Worker Code */}
-        <Card className="modern-card">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg">
-                <Globe className="h-5 w-5 text-white" />
-              </div>
-              Cloudflare Worker Code
-            </CardTitle>
-            <CardDescription>Copy this code and paste it into your Cloudflare Worker</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="relative">
-              <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto text-sm max-h-96 overflow-y-auto">
-                <code>{cloudflareWorkerCode}</code>
-              </pre>
-              <Button
-                onClick={() => copyToClipboard(cloudflareWorkerCode)}
-                className="absolute top-2 right-2 h-8 w-8 p-0"
-                variant="outline"
-                size="sm"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
+            <div className="space-y-3">
+              {[
+                {
+                  step: "1",
+                  title: "Create Worker",
+                  desc: "Go to Cloudflare Dashboard → Workers & Pages",
+                  color: "from-blue-500 to-blue-600",
+                },
+                {
+                  step: "2",
+                  title: "Deploy Code",
+                  desc: "Copy the worker code below",
+                  color: "from-green-500 to-green-600",
+                },
+                {
+                  step: "3",
+                  title: "Configure URL",
+                  desc: "Paste your worker URL above",
+                  color: "from-purple-500 to-purple-600",
+                },
+                {
+                  step: "4",
+                  title: "Start Earning",
+                  desc: "Receive ping requests automatically",
+                  color: "from-orange-500 to-orange-600",
+                },
+              ].map((item, index) => (
+                <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-slate-700/50">
+                  <div
+                    className={`w-8 h-8 rounded-full bg-gradient-to-r ${item.color} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
+                  >
+                    {item.step}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">{item.title}</h4>
+                    <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">{item.desc}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                </div>
+              ))}
             </div>
 
-            <div className="flex gap-4">
-              <Button
-                onClick={() => copyToClipboard(cloudflareWorkerCode)}
-                variant="outline"
-                className="flex-1 h-12 rounded-xl"
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Code
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button onClick={() => setShowCode(!showCode)} variant="outline" className="flex-1 h-11">
+                <Code className="h-4 w-4 mr-2" />
+                {showCode ? "Hide Code" : "Show Code"}
               </Button>
               <Button
                 onClick={() => window.open("https://dash.cloudflare.com/", "_blank")}
                 variant="outline"
-                className="flex-1 h-12 rounded-xl"
+                className="flex-1 h-11"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open Cloudflare
@@ -434,49 +409,82 @@ export default {
           </CardContent>
         </Card>
 
-        {/* Features & Benefits */}
-        <Card className="modern-card">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 shadow-lg">
-                <Zap className="h-5 w-5 text-white" />
+        {/* Worker Code (Collapsible) */}
+        {showCode && (
+          <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <Globe className="h-5 w-5 text-emerald-600" />
+                Worker Code
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="relative">
+                <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-xs sm:text-sm max-h-64 sm:max-h-80 overflow-y-auto">
+                  <code>{cloudflareWorkerCode}</code>
+                </pre>
+                <Button
+                  onClick={() => copyToClipboard(cloudflareWorkerCode)}
+                  className="absolute top-2 right-2 h-8 w-8 p-0"
+                  variant="secondary"
+                  size="sm"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
-              Validator Benefits
-            </CardTitle>
-            <CardDescription>Why run a WebTether validator?</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800">
-                <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">Earn ETH Rewards</h4>
-                <p className="text-sm text-green-700 dark:text-green-300">
-                  Get paid in ETH for every website validation you perform
-                </p>
-              </div>
+              <Button onClick={() => copyToClipboard(cloudflareWorkerCode)} className="w-full h-11" variant="outline">
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Worker Code
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border border-blue-200 dark:border-blue-800">
-                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Global Network</h4>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Join validators worldwide providing reliable uptime monitoring
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-950/20 dark:to-violet-950/20 border border-purple-200 dark:border-purple-800">
-                <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">Low Maintenance</h4>
-                <p className="text-sm text-purple-700 dark:text-purple-300">
-                  Set it up once and earn passively with minimal maintenance
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border border-orange-200 dark:border-orange-800">
-                <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">Fast & Reliable</h4>
-                <p className="text-sm text-orange-700 dark:text-orange-300">
-                  Cloudflare's edge network ensures fast, reliable validations
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Benefits Grid */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            {
+              icon: "💰",
+              title: "Earn ETH",
+              desc: "Get paid for validations",
+              color:
+                "from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800",
+            },
+            {
+              icon: "🌍",
+              title: "Global Network",
+              desc: "Join worldwide validators",
+              color:
+                "from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800",
+            },
+            {
+              icon: "⚡",
+              title: "Low Maintenance",
+              desc: "Set once, earn passively",
+              color:
+                "from-purple-50 to-violet-50 dark:from-purple-950/20 dark:to-violet-950/20 border-purple-200 dark:border-purple-800",
+            },
+            {
+              icon: "🚀",
+              title: "Fast & Reliable",
+              desc: "Cloudflare edge network",
+              color:
+                "from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border-orange-200 dark:border-orange-800",
+            },
+          ].map((benefit, index) => (
+            <Card key={index} className={`border ${benefit.color} shadow-sm`}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{benefit.icon}</span>
+                  <div>
+                    <h3 className="font-semibold text-sm sm:text-base">{benefit.title}</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{benefit.desc}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   )

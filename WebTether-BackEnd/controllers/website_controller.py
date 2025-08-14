@@ -1,87 +1,97 @@
 # controllers/website_controller.py
 """
-Website controller
-- Creates/list/updates/deletes websites
-- Provides `available-sites` endpoint which returns websites NOT owned by the
-  authenticated user.
-This file is defensive: it normalizes JWT claims and normalizes model responses
-so differences between returning supabase response objects vs raw lists are handled.
+Website controller (Flask blueprint)
+
+Endpoints:
+ - POST   /websites          -> create website (auth required)
+ - GET    /websites         -> list all websites (public; consider pagination)
+ - GET    /websites/<wid>    -> get website by id
+ - PUT    /websites/<wid>    -> update website (owner only)
+ - DELETE /websites/<wid>    -> delete website (owner only)
+ - GET    /websites/available-sites  -> list sites not owned by current user (auth required)
+
+Notes:
+ - Uses defensive helpers to normalize Supabase responses.
+ - Expects JWT decoding via utils.jwt_utils.decode_token (keeps utils unchanged).
 """
 
 from flask import Blueprint, request, jsonify
 from models.website_model import WebsiteModel
+from models.user_model import UserModel
 from utils.jwt_utils import decode_token
+import traceback
 
 website_controller = Blueprint("website_controller", __name__)
 website_model = WebsiteModel()
+user_model = UserModel()
 
 
-def _normalize_user_id(uid_field):
-    """
-    Normalize user_id values we might find in JWT claims.
-    Accepts:
-      - int
-      - numeric string
-      - dict like {"user_id": 31} or {"id": 31}
-    Returns int or raises ValueError.
-    """
-    if isinstance(uid_field, int):
-        return uid_field
-    if isinstance(uid_field, str):
-        try:
-            return int(uid_field)
-        except ValueError:
-            raise ValueError("user_id string is not numeric")
-    if isinstance(uid_field, dict):
-        for k in ("user_id", "id", "uid"):
-            if k in uid_field:
-                return _normalize_user_id(uid_field[k])
-        # if single-item dict, try that value
-        if len(uid_field) == 1:
-            (v,) = uid_field.values()
-            return _normalize_user_id(v)
-    raise ValueError("Cannot normalize user_id")
+# -------------------------
+# Helpers
+# -------------------------
+def _unwrap_supabase_response(resp):
+    """Return resp.data if object has .data, else return resp as-is."""
+    if resp is None:
+        return None
+    if hasattr(resp, "data"):
+        return resp.data
+    return resp
+
+
+def _single_record_from_response(resp):
+    """Return a single dict record or None from various possible response shapes."""
+    data = _unwrap_supabase_response(resp)
+    if data is None:
+        return None
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, list):
+        return data[0] if len(data) > 0 else None
+    return None
 
 
 def _extract_user_id_from_claims(claims):
     """
-    Defensive extractor for user_id from decoded JWT claims.
-    Returns int or None.
+    Defensive extraction of user id from token claims.
+    Accepts shapes like {"user_id": 31} or nested {"user_id": {"user_id": 31}}.
     """
     if not isinstance(claims, dict):
         return None
     uid_field = claims.get("user_id") or claims.get("id") or claims.get("uid")
     if uid_field is None:
         return None
-    try:
-        return _normalize_user_id(uid_field)
-    except ValueError:
+    if isinstance(uid_field, dict):
+        for k in ("user_id", "id", "uid"):
+            if k in uid_field:
+                return _extract_user_id_from_claims({k: uid_field[k]})
+        if len(uid_field) == 1:
+            (v,) = uid_field.values()
+            return int(v) if isinstance(v, (int, str)) and str(v).isdigit() else None
         return None
+    if isinstance(uid_field, int):
+        return uid_field
+    if isinstance(uid_field, str) and uid_field.isdigit():
+        return int(uid_field)
+    return None
 
 
-def _unwrap_supabase_response(resp):
-    """
-    Supabase client execute() usually returns an object with .data attribute.
-    But some model helper functions may be returning .data already or plain lists.
-    This function returns a plain python structure (list/dict) suitable for jsonify.
-    """
-    if resp is None:
-        return []
-    # If user returned a supabase 'Response' object with .data attribute
-    if hasattr(resp, "data"):
-        return resp.data or []
-    # Already a list/dict
-    return resp
-
-
+# -------------------------
+# Routes
+# -------------------------
 @website_controller.route('/', methods=['POST'])
 def create_website():
-    # Require Authorization header and extract user id from JWT
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    """
+    Create a website record. Requires Authorization header (Bearer <token>).
+    Request JSON:
+      { url: string, category?: string, name?: string, reward_per_ping?: number }
+
+    The owner uid is taken from the JWT (do NOT accept uid from body).
+    """
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
         return jsonify({"error": "Missing or invalid Authorization header"}), 401
 
-    token = auth_header.replace("Bearer ", "")
+    token = auth.split(" ", 1)[1]
     claims = decode_token(token)
     if not claims:
         return jsonify({"error": "Invalid or expired token"}), 401
@@ -90,65 +100,157 @@ def create_website():
     if uid is None:
         return jsonify({"error": "Invalid user id in token"}), 400
 
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     url = data.get("url")
-    category = data.get("category")
-
     if not url:
-        return jsonify({"error": "Missing website URL"}), 400
+        return jsonify({"error": "Missing required field: url"}), 400
 
-    # Create website record as the authenticated user
-    res = website_model.create_website(url, uid, category)
-    # normalize response
-    payload = _unwrap_supabase_response(res)
-    return jsonify(payload), 201
+    try:
+        resp = website_model.create_website(
+            url=url,
+            uid=uid,
+            category=data.get("category"),
+            name=data.get("name"),
+            reward_per_ping=data.get("reward_per_ping"),
+            status=data.get("status")
+        )
+        return jsonify(_unwrap_supabase_response(resp)), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        tb = traceback.format_exc()
+        return jsonify({"error": f"Failed to create website: {e}", "trace": tb}), 500
 
 
 @website_controller.route('/', methods=['GET'])
 def list_websites():
-    res = website_model.get_all_websites()
-    return jsonify(_unwrap_supabase_response(res)), 200
+    """
+    Public listing of websites.
+    In production: add pagination, filtering, caching.
+    """
+    try:
+        resp = website_model.get_all_websites()
+        return jsonify(_unwrap_supabase_response(resp)), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to list websites: {str(e)}"}), 500
 
 
 @website_controller.route('/<int:wid>', methods=['GET'])
 def get_website(wid):
-    res = website_model.get_website_by_id(wid)
-    return jsonify(_unwrap_supabase_response(res)), 200
+    try:
+        resp = website_model.get_website_by_id(wid)
+        rec = _single_record_from_response(resp)
+        if not rec:
+            return jsonify({"error": "Website not found"}), 404
+        return jsonify(rec), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch website: {str(e)}"}), 500
 
 
 @website_controller.route('/<int:wid>', methods=['PUT'])
 def update_website(wid):
-    data = request.json or {}
-    res = website_model.update_website(wid, data)
-    return jsonify(_unwrap_supabase_response(res)), 200
+    """
+    Update website — only owner (or admin) may update.
+    Body may include: url, category, status, name, reward_per_ping
+    """
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return jsonify({"error": "Missing or invalid Authorization header"}), 401
+
+    token = auth.split(" ", 1)[1]
+    claims = decode_token(token)
+    if not claims:
+        return jsonify({"error": "Invalid or expired token"}), 401
+
+    uid = _extract_user_id_from_claims(claims)
+    if uid is None:
+        return jsonify({"error": "Invalid user id in token"}), 400
+
+    # ensure requester is owner of site
+    try:
+        website_row = _single_record_from_response(website_model.get_website_by_id(wid))
+        if not website_row:
+            return jsonify({"error": "Website not found"}), 404
+
+        if int(website_row.get("uid")) != int(uid):
+            return jsonify({"error": "Forbidden: only owner can update website"}), 403
+
+        data = request.get_json(silent=True) or {}
+        resp = website_model.update_website(wid, data)
+        return jsonify(_unwrap_supabase_response(resp)), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        tb = traceback.format_exc()
+        return jsonify({"error": f"Failed to update website: {e}", "trace": tb}), 500
 
 
 @website_controller.route('/<int:wid>', methods=['DELETE'])
 def delete_website(wid):
-    website_model.delete_website(wid)
-    return jsonify({"message": "Deleted"}), 200
+    """
+    Delete website — only owner can delete. Consider soft-delete in production.
+    """
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return jsonify({"error": "Missing or invalid Authorization header"}), 401
+
+    token = auth.split(" ", 1)[1]
+    claims = decode_token(token)
+    if not claims:
+        return jsonify({"error": "Invalid or expired token"}), 401
+
+    uid = _extract_user_id_from_claims(claims)
+    if uid is None:
+        return jsonify({"error": "Invalid user id in token"}), 400
+
+    try:
+        website_row = _single_record_from_response(website_model.get_website_by_id(wid))
+        if not website_row:
+            return jsonify({"error": "Website not found"}), 404
+
+        if int(website_row.get("uid")) != int(uid):
+            return jsonify({"error": "Forbidden: only owner can delete website"}), 403
+
+        website_model.delete_website(wid)
+        return jsonify({"message": "Deleted"}), 200
+    except Exception as e:
+        tb = traceback.format_exc()
+        return jsonify({"error": f"Failed to delete website: {e}", "trace": tb}), 500
 
 
 @website_controller.route('/available-sites', methods=['GET'])
 def get_available_sites():
     """
-    Return websites not owned by the authenticated user.
-    Defensive: normalize JWT -> user_id and normalize model response.
+    Return websites that the authenticated user may validate (not their own).
+    Auth required because results are relative to the requester.
     """
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
         return jsonify({"error": "Missing or invalid Authorization header"}), 401
 
-    token = auth_header.replace("Bearer ", "")
+    token = auth.split(" ", 1)[1]
     claims = decode_token(token)
     if not claims:
         return jsonify({"error": "Invalid or expired token"}), 401
 
-    current_uid = _extract_user_id_from_claims(claims)
-    if current_uid is None:
+    uid = _extract_user_id_from_claims(claims)
+    if uid is None:
         return jsonify({"error": "Invalid user id in token"}), 400
 
-    # Ask model for available sites. model may return supabase response or list
-    result = website_model.get_available_sites_for_user(current_uid)
-    data = _unwrap_supabase_response(result)
-    return jsonify(data), 200
+    try:
+        resp = website_model.get_available_sites_for_user(uid)
+        return jsonify(_unwrap_supabase_response(resp)), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch available sites: {str(e)}"}), 500
+
+@website_controller.route('/user/<int:uid>', methods=['GET'])
+def get_user_websites(uid):
+    """
+    Return websites owned by the specified user.
+    """
+    try:
+        resp = website_model.get_websites_by_user(uid)
+        return jsonify(_unwrap_supabase_response(resp)), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch user websites: {str(e)}"}), 500

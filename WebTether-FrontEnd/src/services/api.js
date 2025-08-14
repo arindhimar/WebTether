@@ -1,8 +1,24 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000"
+const API_BASE_URL = "http://localhost:5000"
 
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL
+  }
+
+  async get(endpoint, options = {}) {
+    return this.request(endpoint, { method: "GET", ...options })
+  }
+
+  async post(endpoint, body, options = {}) {
+    return this.request(endpoint, { method: "POST", body: JSON.stringify(body), ...options })
+  }
+
+  async put(endpoint, body, options = {}) {
+    return this.request(endpoint, { method: "PUT", body: JSON.stringify(body), ...options })
+  }
+
+  async delete(endpoint, options = {}) {
+    return this.request(endpoint, { method: "DELETE", ...options })
   }
 
   async request(endpoint, options = {}) {
@@ -22,168 +38,242 @@ class ApiService {
     }
 
     try {
+      console.log(`API Request: ${config.method} ${url}`, config.body ? JSON.parse(config.body) : "")
+
       const response = await fetch(url, config)
-      const data = await response.json()
+      const responseData = await response.json()
+
+      console.log(`API Response: ${response.status}`, responseData)
 
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`)
+        throw new Error(responseData.error || `HTTP error! status: ${response.status}`)
       }
 
-      return data
+      return responseData
     } catch (error) {
       console.error("API request failed:", error)
       throw error
     }
   }
 
-  async get(endpoint) {
-    return this.request(endpoint, { method: "GET" })
-  }
-
-  async post(endpoint, data) {
-    return this.request(endpoint, {
+  // Auth endpoints
+  async login(email, password) {
+    return this.request("/auth/login", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ email, password }),
     })
   }
 
-  async put(endpoint, data) {
-    return this.request(endpoint, {
+  async signup(signupData) {
+    return this.request("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(signupData),
+    })
+  }
+
+  // User endpoints
+  async getUser(userId) {
+    return this.request(`/users/${userId}`)
+  }
+
+  async updateUser(userId, data) {
+    return this.request(`/users/${userId}`, {
       method: "PUT",
       body: JSON.stringify(data),
     })
   }
 
-  async delete(endpoint) {
-    return this.request(endpoint, { method: "DELETE" })
+  async getAllUsers() {
+    return this.request("/users/")
   }
 
-  // Updated auth endpoints to match new API format
-  async login(email, password) {
-    return this.post("/auth/login", { email, password })
-  }
-
-  async signup(userData) {
-    return this.post("/auth/signup", userData)
-  }
-
-  async logout() {
-    return this.post("/auth/logout", {})
-  }
-
-  // User endpoints
-  async getUser(userId) {
-    return this.get(`/users/${userId}`)
-  }
-
-  async updateUser(userId, data) {
-    return this.put(`/users/${userId}`, data)
+  async deleteUser(userId) {
+    return this.request(`/users/${userId}`, {
+      method: "DELETE",
+    })
   }
 
   // Website endpoints
   async getWebsites() {
-    return this.get("/websites/")
+    return this.request("/websites/")
   }
 
-  async getWebsiteById(wid) {
-    return this.get(`/websites/${wid}`)
+  async getWebsite(wid) {
+    return this.request(`/websites/${wid}`)
   }
 
   async getAvailableSites() {
-    return this.get("/websites/available-sites")
+    return this.request("/websites/available-sites")
   }
 
-  async getMySites() {
-    return this.get("/websites/my-sites")
-  }
-
-  // Fixed function parameters to properly handle both old and new formats
-  async createWebsite(data, category = null) {
-    // Support both old format (url, category) and new format (object with payment info)
-    if (typeof data === "string") {
-      // Legacy format: createWebsite(url, category)
-      const url = data
-      return this.post("/websites/", { url, category })
-    } else {
-      // New format: createWebsite({ url, category, tx_hash, fee_paid_numeric })
-      return this.post("/websites/", data)
-    }
+  async createWebsite(websiteData) {
+    return this.request("/websites/", {
+      method: "POST",
+      body: JSON.stringify(websiteData),
+    })
   }
 
   async updateWebsite(wid, data) {
-    return this.put(`/website/${wid}`, data)
+    return this.request(`/websites/${wid}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
   }
 
   async deleteWebsite(wid) {
-    return this.delete(`/websites/${wid}`)
+    return this.request(`/websites/${wid}`, {
+      method: "DELETE",
+    })
+  }
+
+
+  async getUserWebsites(uid) {
+    return this.request(`/websites/user/${uid}`)
   }
 
   // Ping endpoints
-  async getPings() {
-    return this.get("/pings/")
+  async getAllPings() {
+    return this.request("/pings/")
+  }
+
+  async getPing(pid) {
+    return this.request(`/pings/${pid}`)
+  }
+
+  async createPing(pingData) {
+    return this.request("/pings/", {
+      method: "POST",
+      body: JSON.stringify(pingData),
+    })
+  }
+
+  async updatePing(pid, data) {
+    return this.request(`/pings/${pid}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deletePing(pid) {
+    return this.request(`/pings/${pid}`, {
+      method: "DELETE",
+    })
+  }
+
+  async getUserPings(uid) {
+    return this.request(`/pings/user/${uid}`)
   }
 
   /**
-   * Submit a simulated ping with fake transaction code
-   * Now users EARN money for pinging instead of paying
-   * @param {Object} params - Ping parameters
-   * @param {number} params.wid - Website ID
-   * @param {string} params.url - Website URL
-   * @param {string} params.tx_hash - Fake transaction code (TX-001, TX-002, etc.)
+   * Manual ping with blockchain transaction
+   * @param {Object} params - { wid, url, tx_hash }
    */
-  async manualPing({ wid, url, tx_hash }) {
-    return this.post("/pings/manual", {
-      wid,
-      url,
-      tx_hash,
+  async manualPing(params) {
+    return this.request("/pings/manual", {
+      method: "POST",
+      body: JSON.stringify(params),
     })
   }
 
   // Wallet endpoints
   async getWalletBalance() {
-    return this.get("/pings/wallet/balance")
+    return this.request("/pings/wallet/balance")
   }
 
   async getTransactionHistory() {
-    return this.get("/pings/wallet/transactions")
+    return this.request("/pings/wallet/transactions")
   }
 
-  // Network status
   async getNetworkStatus() {
-    return this.get("/pings/network/status")
+    return this.request("/pings/network/status")
+  }
+
+  // Transaction endpoints
+  async getAllTransactions(limit, offset) {
+    const params = new URLSearchParams()
+    if (limit) params.append("limit", limit)
+    if (offset) params.append("offset", offset)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return this.request(`/transactions/${query}`)
+  }
+
+  async getTransaction(txHash) {
+    return this.request(`/transactions/${txHash}`)
+  }
+
+  async getUserTransactions(uid) {
+    return this.request(`/transactions/user/${uid}`)
+  }
+
+  async createTransaction(transactionData) {
+    return this.request("/transactions/", {
+      method: "POST",
+      body: JSON.stringify(transactionData),
+    })
+  }
+
+  async updateTransaction(txHash, data) {
+    return this.request(`/transactions/${txHash}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteTransaction(txHash) {
+    return this.request(`/transactions/${txHash}`, {
+      method: "DELETE",
+    })
   }
 }
 
 export const api = new ApiService()
 
-// Legacy exports for backward compatibility
+// Legacy API exports for backward compatibility
 export const pingAPI = {
-  getAllPings: () => api.getPings(),
-  createPing: (data) => api.post("/pings/", data),
+  getAllPings: () => api.getAllPings(),
+  createPing: (data) => api.createPing(data),
   manualPing: (params) => api.manualPing(params),
+  getPing: (pid) => api.getPing(pid),
+  updatePing: (pid, data) => api.updatePing(pid, data),
+  deletePing: (pid) => api.deletePing(pid),
+  getUserPings: (uid) => api.getUserPings(uid),
 }
 
 export const websiteAPI = {
   getAllWebsites: () => api.getWebsites(),
-  getWebsiteById: (wid) => api.getWebsiteById(wid),
+  getWebsite: (wid) => api.getWebsite(wid),
   getAvailableSites: () => api.getAvailableSites(),
-  getMySites: () => api.getMySites(),
-  createWebsite: (urlOrData, category) => {
-    if (typeof urlOrData === "object") {
-      return api.createWebsite(urlOrData)
-    } else {
-      return api.createWebsite(urlOrData, category)
-    }
-  },
+  createWebsite: (websiteData) => api.createWebsite(websiteData), 
   updateWebsite: (wid, data) => api.updateWebsite(wid, data),
   deleteWebsite: (wid) => api.deleteWebsite(wid),
+  getUserWebsites: (uid) => api.getUserWebsites(uid),
 }
 
-// Added userAPI export for compatibility
 export const userAPI = {
-  getUser: (userId) => api.getUser(userId),
-  updateUser: (userId, data) => api.updateUser(userId, data),
-  login: (email, password) => api.login(email, password),
-  signup: (userData) => api.signup(userData),
-  logout: () => api.logout(),
+  getAllUsers: () => api.getAllUsers(),
+  getUser: (uid) => api.getUser(uid),
+  updateUser: (uid, data) => api.updateUser(uid, data),
+  deleteUser: (uid) => api.deleteUser(uid),
 }
+
+export const authAPI = {
+  login: (email, password) => api.login(email, password),
+  signup: (data) => api.signup(data),
+}
+
+export const walletAPI = {
+  getBalance: () => api.getWalletBalance(),
+  getTransactions: () => api.getTransactionHistory(),
+  getNetworkStatus: () => api.getNetworkStatus(),
+}
+
+export const transactionAPI = {
+  getAllTransactions: (limit, offset) => api.getAllTransactions(limit, offset),
+  getTransaction: (txHash) => api.getTransaction(txHash),
+  getUserTransactions: (uid) => api.getUserTransactions(uid),
+  createTransaction: (data) => api.createTransaction(data),
+  updateTransaction: (txHash, data) => api.updateTransaction(txHash, data),
+  deleteTransaction: (txHash) => api.deleteTransaction(txHash),
+}
+
+

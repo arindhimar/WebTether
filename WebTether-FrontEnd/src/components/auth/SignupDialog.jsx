@@ -118,13 +118,21 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
       const result = await signup(signupData)
 
       if (result.success) {
+        const userName = result.user?.name || formData.name
+        const userRole = result.user?.isVisitor || result.user?.role === "validator" ? "validator" : "website owner"
+
         toast({
           title: "Account Created Successfully!",
-          description: `Welcome to Web-Tether, ${formData.name}! Let's get you set up.`,
+          description: `Welcome to Web-Tether, ${userName}! You're now registered as a ${userRole}.`,
           action: <CheckCircle2 className="h-4 w-4" />,
         })
         onOpenChange(false)
         resetForm()
+
+        // Navigate to dashboard or onboarding
+        setTimeout(() => {
+          window.location.href = "/dashboard"
+        }, 1000)
       } else {
         const errorMessage = result.error || "Account creation failed. Please try again."
         setErrors({ general: errorMessage })
@@ -364,7 +372,7 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
                 </p>
               </div>
 
-              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 dark:from-blue-950/20 dark:to-purple-950/20 dark:border-blue-800">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <Checkbox
@@ -387,9 +395,9 @@ export function SignupDialog({ open, onOpenChange, onSwitchToLogin }) {
               </Card>
 
               {formData.isVisitor && (
-                <Alert className="bg-green-50 border-green-200">
+                <Alert className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-800">
+                  <AlertDescription className="text-green-800 dark:text-green-200">
                     <strong>Excellent choice!</strong> After creating your account, we'll guide you through setting up
                     your Cloudflare Worker to start earning rewards by validating websites.
                   </AlertDescription>

@@ -5,47 +5,47 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 262 83% 58%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 262 83% 58%;
-    --radius: 0.75rem;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 262 83% 58%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
   }
 }
 
@@ -55,59 +55,201 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-@layer components {
+/* Mobile-first responsive utilities */
+@layer utilities {
+  /* Mobile container with proper padding */
+  .mobile-container {
+    @apply px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto;
+  }
+
+  /* Mobile-friendly spacing */
+  .space-y-mobile > * + * {
+    @apply mt-4 sm:mt-6;
+  }
+
+  .gap-mobile {
+    @apply gap-4 sm:gap-6;
+  }
+
+  /* Mobile typography */
+  .mobile-heading-1 {
+    @apply text-xl sm:text-2xl lg:text-3xl font-bold;
+  }
+
+  .mobile-heading-2 {
+    @apply text-lg sm:text-xl lg:text-2xl font-semibold;
+  }
+
+  .mobile-heading-3 {
+    @apply text-base sm:text-lg font-semibold;
+  }
+
+  .mobile-body {
+    @apply text-sm sm:text-base;
+  }
+
+  .mobile-caption {
+    @apply text-xs sm:text-sm text-muted-foreground;
+  }
+
+  /* Mobile-friendly buttons */
+  .btn-mobile {
+    @apply h-11 sm:h-12 text-sm sm:text-base px-4 sm:px-6;
+  }
+
+  .btn-mobile-sm {
+    @apply h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4;
+  }
+
+  /* Mobile card layouts */
+  .mobile-card-grid {
+    @apply grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .mobile-card-grid-2 {
+    @apply grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2;
+  }
+
+  /* Mobile flexbox utilities */
+  .flex-mobile-col {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  .flex-mobile-row {
+    @apply flex flex-row sm:flex-col;
+  }
+
+  /* Mobile padding utilities */
+  .p-mobile {
+    @apply p-4 sm:p-6;
+  }
+
+  .py-mobile {
+    @apply py-4 sm:py-6;
+  }
+
+  .px-mobile {
+    @apply px-4 sm:px-6;
+  }
+
+  /* Mobile safe areas */
+  .mobile-safe-area-top {
+    @apply pt-safe-area-inset-top;
+  }
+
+  .mobile-safe-area-bottom {
+    @apply pb-safe-area-inset-bottom;
+  }
+
+  /* Mobile scroll improvements */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .mobile-scroll::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .mobile-scroll::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  .mobile-scroll::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  /* Modern card styles */
   .modern-card {
-    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-0 shadow-lg rounded-xl sm:rounded-2xl;
   }
 
   .floating-card {
-    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300;
+    @apply bg-white dark:bg-gray-900 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl sm:rounded-2xl;
   }
 
+  /* Button styles */
   .btn-primary {
-    @apply bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200;
+    @apply bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200;
   }
 
   .btn-secondary {
-    @apply bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-medium border border-gray-200 dark:border-gray-700 transition-all duration-200;
+    @apply bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border/50 transition-all duration-200;
   }
 
+  /* Status badges */
   .status-success {
-    @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800;
+    @apply bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800;
   }
 
   .status-error {
-    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800;
+    @apply bg-red-100 text-red-800 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800;
   }
 
   .status-warning {
-    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800;
+    @apply bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800;
   }
 
   .status-info {
-    @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800;
+    @apply bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800;
   }
 
+  /* Loading animations */
   .loading-shimmer {
-    @apply animate-pulse bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700;
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    @apply animate-pulse bg-gradient-to-r from-muted via-muted/50 to-muted;
   }
 
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
+  /* Gradient text */
   .gradient-text {
-    @apply bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent;
   }
+
+  /* Input styles */
+  .input-modern {
+    @apply border-0 bg-muted/50 focus:bg-background focus:ring-2 focus:ring-purple-500 transition-all duration-200;
+  }
+
+  /* Metric styles */
+  .metric-label {
+    @apply text-xs sm:text-sm font-medium text-muted-foreground;
+  }
+
+  .metric-value {
+    @apply text-xl sm:text-2xl lg:text-3xl font-bold text-foreground;
+  }
+}
+
+/* Touch improvements for mobile */
+@media (hover: none) and (pointer: coarse) {
+  .group:hover .group-hover\:opacity-100 {
+    @apply opacity-100;
+  }
+}
+
+/* Safe area support */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .pt-safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .pb-safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Compact mobile styles */
+.mobile-compact {
+  @apply space-y-3 sm:space-y-4;
+}
+
+.mobile-compact .mobile-card {
+  @apply p-3 sm:p-4;
+}
+
+.mobile-compact .mobile-text {
+  @apply text-xs sm:text-sm;
 }

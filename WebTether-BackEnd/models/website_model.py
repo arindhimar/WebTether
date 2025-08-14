@@ -1,54 +1,80 @@
+# models/website_model.py
+"""
+WebsiteModel - thin Supabase-backed model for `website` table.
+
+Responsibilities:
+ - Provide CRUD operations for website rows.
+ - Keep business logic minimal (controllers enforce auth/ownership).
+ - Return Supabase response objects so controllers can inspect .data / status.
+"""
+
 from supabase import create_client
 import os
 from dotenv import load_dotenv
-from typing import Optional, Dict, Any, List
 
 load_dotenv()
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
+
 class WebsiteModel:
     def __init__(self):
         self.supabase = supabase
+        self.table = "website"
 
-    def create_website(self, url: str, uid: int, category: Optional[str] = None) -> Dict[str, Any]:
-        """Create a website entry for a user"""
-        data = {
+    # Create a website row. uid should be the owner user id.
+    def create_website(self, url: str, uid: int, category: str = None,
+                       name: str = None, reward_per_ping: float = None, status: str = None):
+        if not url:
+            raise ValueError("url is required")
+
+        payload = {
             "url": url,
-            "uid": uid,
-            "category": category
+            "uid": uid
         }
-        response = self.supabase.table("website").insert(data).execute()
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        raise Exception("Website creation failed")
+        if category is not None:
+            payload["category"] = category
+        if name is not None:
+            payload["name"] = name
+        if reward_per_ping is not None:
+            payload["reward_per_ping"] = reward_per_ping
+        if status is not None:
+            payload["status"] = status
 
-    def get_all_websites(self) -> List[Dict[str, Any]]:
-        """Fetch all websites"""
-        response = self.supabase.table("website").select("*").execute()
-        return response.data
+        return self.supabase.table(self.table).insert(payload).execute()
 
-    def get_website_by_id(self, wid: int) -> Optional[Dict[str, Any]]:
-        """Fetch website by ID"""
-        response = self.supabase.table("website").select("*").eq("wid", wid).maybe_single().execute()
-        return response.data
+    # Read operations
+    def get_all_websites(self):
+        return self.supabase.table(self.table).select("*").execute()
 
-    def update_website(self, wid: int, update_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Update a website entry"""
-        response = self.supabase.table("website").update(update_data).eq("wid", wid).execute()
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        raise Exception("Website not found or update failed")
+    def get_website_by_id(self, wid: int):
+        # maybe_single to avoid errors when no rows (returns None)
+        return self.supabase.table(self.table).select("*").eq("wid", wid).maybe_single().execute()
 
-    def delete_website(self, wid: int) -> None:
-        """Delete website by ID"""
-        self.supabase.table("website").delete().eq("wid", wid).execute()
+    def get_websites_by_owner(self, uid: int):
+        return self.supabase.table(self.table).select("*").eq("uid", uid).execute()
 
-    def get_available_sites_for_user(self, current_uid: int) -> List[Dict[str, Any]]:
-        """Fetch websites not owned by the given user"""
-        response = self.supabase.table("website").select("*").neq("uid", current_uid).execute()
-        return response.data
+    def get_websites_excluding_user(self, uid: int):
+        """Return websites not owned by the given uid."""
+        return self.supabase.table(self.table).select("*").neq("uid", uid).execute()
 
-    def get_websites_by_user(self, uid: int) -> List[Dict[str, Any]]:
-        """Fetch websites owned by a specific user"""
-        response = self.supabase.table("website").select("*").eq("uid", uid).execute()
-        return response.data
+    def get_available_sites_for_user(self, current_uid: int):
+        """
+        Convenience wrapper used by controllers to fetch sites that
+        the current user can validate (not their own).
+        """
+        return self.get_websites_excluding_user(current_uid)
+
+    # Update & delete
+    def update_website(self, wid: int, data: dict):
+        # whitelist fields to prevent accidental overwrite
+        allowed = {"url", "category", "status", "name", "reward_per_ping", "uid"}
+        payload = {k: v for k, v in (data or {}).items() if k in allowed}
+        if not payload:
+            raise ValueError("No updatable fields provided")
+        return self.supabase.table(self.table).update(payload).eq("wid", wid).execute()
+
+    def delete_website(self, wid: int):
+        return self.supabase.table(self.table).delete().eq("wid", wid).execute()
+
+    def get_websites_by_user(self, uid: int):
+        return self.supabase.table(self.table).select("*").eq("uid", uid).execute()

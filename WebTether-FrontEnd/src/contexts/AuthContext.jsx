@@ -2,9 +2,187 @@
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { api } from "../services/api"
-import { debugCloudflareWorkerInfo } from "../utils/cloudflareAgent"
 
-const AuthContext = createContext()
+const AuthContext = createContext({})
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Helper to extract user ID from JWT token
+  const getUserIdFromToken = (token) => {
+    if (!token) return null
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]))
+      return payload.user_id?.user_id || payload.user_id?.id || payload.user_id || payload.id
+    } catch (error) {
+      console.error("Error decoding token:", error)
+      return null
+    }
+  }
+
+  // Initialize auth state from localStorage
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const token = localStorage.getItem("token")
+        const storedUser = localStorage.getItem("user")
+
+        if (token && storedUser) {
+          const userData = JSON.parse(storedUser)
+          setUser(userData)
+
+          // Optionally refresh user data from server
+          try {
+            const userId = getUserIdFromToken(token)
+            if (userId) {
+              const freshUserData = await api.getUser(userId)
+              if (freshUserData) {
+                const updatedUser = {
+                  ...userData,
+                  ...freshUserData,
+                  // Ensure consistent field names
+                  isVisitor: freshUserData.isVisitor ?? freshUserData.is_visitor ?? userData.isVisitor,
+                }
+                setUser(updatedUser)
+                localStorage.setItem("user", JSON.stringify(updatedUser))
+              }
+            }
+          } catch (error) {
+            console.warn("Failed to refresh user data:", error)
+            // Continue with stored user data
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error)
+        // Clear invalid data
+        localStorage.removeItem("token")
+        localStorage.removeItem("user")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    initAuth()
+  }, [])
+
+  const login = async (email, password) => {
+    try {
+      const response = await api.login(email, password)
+      console.log("Login response:", response)
+
+      // Handle different response formats
+      const token = response.token || response.session?.token
+      const userData = response.user
+
+      if (!token || !userData) {
+        throw new Error("Invalid login response format")
+      }
+
+      // Store auth data
+      localStorage.setItem("token", token)
+      localStorage.setItem("user", JSON.stringify(userData))
+
+      // Ensure consistent field names
+      const normalizedUser = {
+        ...userData,
+        isVisitor: userData.isVisitor ?? userData.is_visitor ?? false,
+      }
+
+      setUser(normalizedUser)
+      return { success: true, user: normalizedUser }
+    } catch (error) {
+      console.error("Login error:", error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  const signup = async (userData) => {
+    try {
+      const response = await api.signup(userData)
+      console.log("Signup response:", response)
+
+      // Handle different response formats
+      const token = response.session?.token || response.token
+      const user = response.user
+
+      if (!token || !user) {
+        throw new Error("Invalid signup response format")
+      }
+
+      // Store auth data
+      localStorage.setItem("token", token)
+      localStorage.setItem("user", JSON.stringify(user))
+
+      // Ensure consistent field names
+      const normalizedUser = {
+        ...user,
+        isVisitor: user.isVisitor ?? user.is_visitor ?? false,
+      }
+
+      setUser(normalizedUser)
+      return { success: true, user: normalizedUser }
+    } catch (error) {
+      console.error("Signup error:", error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await api.logout()
+    } catch (error) {
+      console.warn("Logout API call failed:", error)
+    } finally {
+      // Clear local state regardless of API call result
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
+      setUser(null)
+    }
+  }
+
+  const updateUser = async (updates) => {
+    if (!user) throw new Error("No user logged in")
+
+    try {
+      const userId = user.id
+      const response = await api.updateUser(userId, updates)
+      console.log("Update user response:", response)
+
+      // Handle response format - could be array or single object
+      let updatedUserData = response
+      if (Array.isArray(response) && response.length > 0) {
+        updatedUserData = response[0]
+      }
+
+      const updatedUser = {
+        ...user,
+        ...updatedUserData,
+        // Ensure consistent field names
+        isVisitor: updatedUserData.isVisitor ?? updatedUserData.is_visitor ?? user.isVisitor,
+      }
+
+      setUser(updatedUser)
+      localStorage.setItem("user", JSON.stringify(updatedUser))
+
+      return updatedUser
+    } catch (error) {
+      console.error("Update user error:", error)
+      throw error
+    }
+  }
+
+  const value = {
+    user,
+    isLoading,
+    login,
+    signup,
+    logout,
+    updateUser,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
@@ -12,149 +190,4 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
-}
-
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(false)
-  const [token, setToken] = useState(localStorage.getItem("token"))
-
-  // Function to refresh user data from the server
-  const refreshUserData = async () => {
-    if (!user?.id || !token) return
-
-    try {
-      const userData = await api.getUser(user.id)
-      console.log("Refreshed user data:", userData)
-      setUser(userData)
-      debugCloudflareWorkerInfo(userData)
-    } catch (error) {
-      console.error("Failed to refresh user data:", error)
-    }
-  }
-
-  // Function to fetch complete user data after login
-  const fetchCompleteUserData = async (userId) => {
-    try {
-      const userData = await api.getUser(userId)
-      console.log("Fetched complete user data:", userData)
-      setUser(userData)
-      debugCloudflareWorkerInfo(userData)
-      return userData
-    } catch (error) {
-      console.error("Failed to fetch user data:", error)
-      return null
-    }
-  }
-
-  const login = async (email, password) => {
-    try {
-      const response = await api.login(email, password)
-      const { user_id, email: userEmail, token } = response
-
-      setToken(token)
-      localStorage.setItem("token", token)
-
-      // Fetch complete user data using the user_id
-      const completeUserData = await fetchCompleteUserData(user_id)
-
-      return { success: true, user: completeUserData }
-    } catch (error) {
-      console.error("Login failed:", error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  const signup = async (signupData) => {
-    try {
-      const response = await api.signup(signupData)
-      const { user_id, email, token } = response
-
-      setToken(token)
-      localStorage.setItem("token", token)
-
-      // Fetch complete user data using the user_id
-      const completeUserData = await fetchCompleteUserData(user_id)
-
-      // Show onboarding for validators (if they have isVisitor flag)
-      if (signupData.isVisitor) {
-        setShowOnboarding(true)
-      }
-
-      return { success: true, user: completeUserData }
-    } catch (error) {
-      console.error("Signup failed:", error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  const logout = () => {
-    setUser(null)
-    setToken(null)
-    setShowOnboarding(false)
-    localStorage.removeItem("token")
-    localStorage.removeItem("user")
-
-    // Redirect to landing page
-    window.location.href = "/"
-  }
-
-  // Add completeOnboarding function
-  const completeOnboarding = () => {
-    setShowOnboarding(false)
-  }
-
-  // Initialize auth state on app startup
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const storedToken = localStorage.getItem("token")
-      const storedUser = localStorage.getItem("user")
-
-      if (storedToken && storedUser) {
-        try {
-          const userData = JSON.parse(storedUser)
-          setToken(storedToken)
-
-          // Refresh user data to ensure it's up to date
-          const refreshedData = await fetchCompleteUserData(userData.id)
-          if (!refreshedData) {
-            // If refresh fails, use stored data
-            setUser(userData)
-          }
-        } catch (error) {
-          console.error("Failed to initialize auth:", error)
-          logout()
-        }
-      }
-      setLoading(false)
-    }
-
-    initializeAuth()
-  }, [])
-
-  // Store user data in localStorage whenever it changes
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user))
-    } else {
-      localStorage.removeItem("user")
-    }
-  }, [user])
-
-  const value = {
-    user,
-    setUser, // Export setUser function
-    token,
-    loading,
-    showOnboarding,
-    login,
-    signup,
-    logout,
-    refreshUserData,
-    fetchCompleteUserData,
-    completeOnboarding,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

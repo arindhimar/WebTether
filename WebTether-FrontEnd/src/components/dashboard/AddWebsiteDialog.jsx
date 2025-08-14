@@ -1,322 +1,322 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { Badge } from "../ui/badge"
-import { Plus, Globe, Coins, RefreshCw, Copy, Check } from "lucide-react"
+import { websiteAPI } from "../../services/api"
+import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../hooks/use-toast"
-import { api } from "../../services/api"
+import { LoadingSpinner } from "./LoadingSpinner"
+import { WebsiteAddedAnimation } from "../animations/WebsiteAddedAnimation"
+import { Globe, AlertCircle, CheckCircle } from "lucide-react"
 
-const WEBSITE_CATEGORIES = [
-  { value: "ecommerce", label: "E-commerce", icon: "🛒" },
-  { value: "blog", label: "Blog/News", icon: "📰" },
-  { value: "portfolio", label: "Portfolio", icon: "💼" },
-  { value: "business", label: "Business", icon: "🏢" },
-  { value: "social", label: "Social Media", icon: "📱" },
-  { value: "education", label: "Education", icon: "🎓" },
-  { value: "entertainment", label: "Entertainment", icon: "🎬" },
-  { value: "other", label: "Other", icon: "🌐" },
+const CATEGORIES = [
+  { value: "ecommerce", label: "E-commerce" },
+  { value: "blog", label: "Blog" },
+  { value: "portfolio", label: "Portfolio" },
+  { value: "business", label: "Business" },
+  { value: "news", label: "News" },
+  { value: "social", label: "Social Media" },
+  { value: "education", label: "Education" },
+  { value: "entertainment", label: "Entertainment" },
+  { value: "technology", label: "Technology" },
+  { value: "other", label: "Other" },
 ]
 
-const generateTransactionCode = () => {
-  const prefix = "TX"
-  const timestamp = Date.now().toString().slice(-6)
-  const random = Math.random().toString(36).substring(2, 5).toUpperCase()
-  return `${prefix}-${timestamp}-${random}`
-}
-
 export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
-  const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showAnimation, setShowAnimation] = useState(false)
   const [formData, setFormData] = useState({
     url: "",
+    name: "",
     category: "",
-    txHash: "",
-    feePaid: "0.001",
+    reward_per_ping: 0.0001,
   })
-  const [availableTxCodes, setAvailableTxCodes] = useState([])
-  const [copiedCode, setCopiedCode] = useState("")
-  const { toast } = useToast()
-
-  // Load saved transaction codes from localStorage
-  useEffect(() => {
-    const savedCodes = JSON.parse(localStorage.getItem("transactionCodes") || "[]")
-    if (savedCodes.length === 0) {
-      // Generate initial codes if none exist
-      const initialCodes = Array.from({ length: 3 }, () => generateTransactionCode())
-      setAvailableTxCodes(initialCodes)
-      localStorage.setItem("transactionCodes", JSON.stringify(initialCodes))
-    } else {
-      setAvailableTxCodes(savedCodes)
-    }
-  }, [])
-
-  const handleGenerateNewCode = () => {
-    const newCode = generateTransactionCode()
-    const updatedCodes = [...availableTxCodes, newCode]
-    setAvailableTxCodes(updatedCodes)
-    localStorage.setItem("transactionCodes", JSON.stringify(updatedCodes))
-    setFormData({ ...formData, txHash: newCode })
-    toast({
-      title: "Success",
-      description: "New transaction code generated!",
-    })
-  }
-
-  const handleCopyCode = async (code) => {
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopiedCode(code)
-      toast({
-        title: "Copied",
-        description: "Transaction code copied to clipboard!",
-      })
-      setTimeout(() => setCopiedCode(""), 2000)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to copy code",
-        variant: "destructive",
-      })
-    }
-  }
+  const [errors, setErrors] = useState({})
 
   const validateUrl = (url) => {
     try {
-      const urlObj = new URL(url.startsWith("http") ? url : `https://${url}`)
+      const urlObj = new URL(url)
       return urlObj.protocol === "http:" || urlObj.protocol === "https:"
     } catch {
       return false
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const validateForm = () => {
+    const newErrors = {}
 
     if (!formData.url.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a website URL",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!validateUrl(formData.url)) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid URL",
-        variant: "destructive",
-      })
-      return
+      newErrors.url = "Website URL is required"
+    } else if (!validateUrl(formData.url)) {
+      newErrors.url = "Please enter a valid URL (including http:// or https://)"
     }
 
     if (!formData.category) {
-      toast({
-        title: "Error",
-        description: "Please select a category",
-        variant: "destructive",
-      })
+      newErrors.category = "Please select a category"
+    }
+
+    if (formData.reward_per_ping < 0) {
+      newErrors.reward_per_ping = "Reward must be 0 or greater"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const generateNameFromUrl = (url) => {
+    try {
+      const urlObj = new URL(url)
+      return urlObj.hostname.replace(/^www\./, "")
+    } catch {
+      return ""
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!validateForm()) {
       return
     }
 
-    if (!formData.txHash) {
-      toast({
-        title: "Error",
-        description: "Please select a transaction code",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setLoading(true)
+    console.log("🚀 Starting website addition process...")
 
     try {
+      setIsSubmitting(true)
+
+      // Generate name from URL if not provided
+      const websiteName = formData.name.trim() || generateNameFromUrl(formData.url)
+
       const websiteData = {
-        url: formData.url.startsWith("http") ? formData.url : `https://${formData.url}`,
+        url: formData.url.trim(),
+        name: websiteName,
         category: formData.category,
-        tx_hash: formData.txHash,
-        fee_paid_numeric: Number.parseFloat(formData.feePaid),
+        uid: user.id,
+        reward_per_ping: Number.parseFloat(formData.reward_per_ping),
       }
 
-      const response = await api.createWebsite(websiteData)
+      console.log("📤 Sending website data:", websiteData)
 
-      toast({
-        title: "Success! 🎉",
-        description: "Website added successfully!",
-      })
-
-      if (onWebsiteAdded) {
-        onWebsiteAdded(response)
-      }
+      const response = await websiteAPI.addWebsite(websiteData)
+      console.log("✅ Website added successfully:", response)
 
       // Reset form
       setFormData({
         url: "",
+        name: "",
         category: "",
-        txHash: "",
-        feePaid: "0.001",
+        reward_per_ping: 0.0001,
+      })
+      setErrors({})
+
+      toast({
+        title: "Website Added!",
+        description: `${websiteName} has been added successfully.`,
       })
 
+      // Close dialog first
+      console.log("🔄 Closing dialog...")
       onOpenChange(false)
+
+      // Call the callback to update parent state
+      if (onWebsiteAdded) {
+        onWebsiteAdded(response)
+      }
+
+      // Show animation after a delay to ensure dialog is closed
+      console.log("🎬 Starting animation in 500ms...")
+      setTimeout(() => {
+        console.log("🎬 Triggering animation now!")
+        setShowAnimation(true)
+      }, 500)
     } catch (error) {
-      console.error("Error adding website:", error)
+      console.error("❌ Error adding website:", error)
       toast({
         title: "Error",
-        description: error.message || "Failed to add website",
+        description: error.message || "Failed to add website. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
-  const selectedCategory = WEBSITE_CATEGORIES.find((cat) => cat.value === formData.category)
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }))
+    }
+  }
+
+  const handleClose = () => {
+    if (!isSubmitting) {
+      setFormData({
+        url: "",
+        name: "",
+        category: "",
+        reward_per_ping: 0.0001,
+      })
+      setErrors({})
+      onOpenChange(false)
+    }
+  }
+
+  const handleAnimationComplete = () => {
+    console.log("🎬 Animation completed, cleaning up...")
+    setShowAnimation(false)
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md modern-card">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-xl font-bold text-foreground">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600">
-              <Globe className="h-5 w-5 text-white" />
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-md modern-card">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
+                <Globe className="h-4 w-4 text-white" />
+              </div>
+              Add Website
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Add a new website to monitor its uptime and earn from validator pings.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* URL Field */}
+            <div className="space-y-2">
+              <Label htmlFor="url" className="text-sm font-medium text-foreground">
+                Website URL *
+              </Label>
+              <Input
+                id="url"
+                type="url"
+                placeholder="https://example.com"
+                value={formData.url}
+                onChange={(e) => handleInputChange("url", e.target.value)}
+                disabled={isSubmitting}
+                className={`modern-input ${errors.url ? "border-red-500 focus:border-red-500" : ""}`}
+              />
+              {errors.url && (
+                <div className="flex items-center gap-1 text-sm text-red-600">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.url}
+                </div>
+              )}
             </div>
-            Add Website
-          </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Add a website to start monitoring its uptime and earn rewards
-          </DialogDescription>
-        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-          {/* URL Input */}
-          <div className="space-y-2">
-            <Label htmlFor="url" className="text-sm font-medium text-foreground">
-              Website URL
-            </Label>
-            <Input
-              id="url"
-              type="url"
-              placeholder="https://example.com"
-              value={formData.url}
-              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              className="h-11 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm"
-            />
-          </div>
+            {/* Name Field */}
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium text-foreground">
+                Website Name
+                <span className="text-xs text-muted-foreground ml-1">(optional)</span>
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="My Website"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                disabled={isSubmitting}
+                className="modern-input"
+              />
+              <p className="text-xs text-muted-foreground">If not provided, we'll generate a name from the URL</p>
+            </div>
 
-          {/* Category Selection */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-foreground">Category</Label>
-            <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-              <SelectTrigger className="h-11 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm">
-                <SelectValue placeholder="Select category">
-                  {selectedCategory && (
-                    <div className="flex items-center gap-2">
-                      <span>{selectedCategory.icon}</span>
-                      <span>{selectedCategory.label}</span>
-                    </div>
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="modern-card border-border/50">
-                {WEBSITE_CATEGORIES.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>
-                    <div className="flex items-center gap-2">
-                      <span>{category.icon}</span>
-                      <span>{category.label}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            {/* Category Field */}
+            <div className="space-y-2">
+              <Label htmlFor="category" className="text-sm font-medium text-foreground">
+                Category *
+              </Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => handleInputChange("category", value)}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger className={`modern-input ${errors.category ? "border-red-500" : ""}`}>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent className="modern-card">
+                  {CATEGORIES.map((category) => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.category && (
+                <div className="flex items-center gap-1 text-sm text-red-600">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.category}
+                </div>
+              )}
+            </div>
 
-          {/* Transaction Code Selection */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-foreground">Transaction Code</Label>
+            {/* Reward Field */}
+            <div className="space-y-2">
+              <Label htmlFor="reward" className="text-sm font-medium text-foreground">
+                Reward per Ping (ETH)
+              </Label>
+              <Input
+                id="reward"
+                type="number"
+                step="0.0001"
+                min="0"
+                placeholder="0.0001"
+                value={formData.reward_per_ping}
+                onChange={(e) => handleInputChange("reward_per_ping", e.target.value)}
+                disabled={isSubmitting}
+                className={`modern-input ${errors.reward_per_ping ? "border-red-500" : ""}`}
+              />
+              {errors.reward_per_ping && (
+                <div className="flex items-center gap-1 text-sm text-red-600">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.reward_per_ping}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                onClick={handleGenerateNewCode}
-                className="text-xs h-8 rounded-lg btn-secondary bg-transparent"
+                onClick={handleClose}
+                disabled={isSubmitting}
+                className="flex-1 btn-secondary bg-transparent"
               >
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Generate
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !formData.url || !formData.category}
+                className="flex-1 btn-primary"
+              >
+                {isSubmitting ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Add Website
+                  </>
+                )}
               </Button>
             </div>
-            <Select value={formData.txHash} onValueChange={(value) => setFormData({ ...formData, txHash: value })}>
-              <SelectTrigger className="h-11 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm">
-                <SelectValue placeholder="Select transaction code" />
-              </SelectTrigger>
-              <SelectContent className="modern-card border-border/50">
-                {availableTxCodes.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-mono text-sm">{code}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleCopyCode(code)
-                        }}
-                        className="ml-2 h-6 w-6 p-0"
-                      >
-                        {copiedCode === code ? (
-                          <Check className="w-3 h-3 text-green-600" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </Button>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-          {/* Fee Display */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-foreground">Registration Fee</Label>
-            <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl border border-border/30">
-              <Coins className="w-5 h-5 text-yellow-600" />
-              <span className="font-mono text-sm text-muted-foreground">{formData.feePaid} ETH</span>
-              <Badge className="status-info ml-auto">One-time</Badge>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="flex-1 h-11 rounded-xl btn-secondary"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading} className="flex-1 h-11 rounded-xl btn-primary">
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Website
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      {/* Website Added Animation */}
+      {showAnimation && <WebsiteAddedAnimation websiteUrl={formData.url} onComplete={handleAnimationComplete} />}
+    </>
   )
 }

@@ -60,14 +60,22 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
       const result = await login(email, password)
 
       if (result.success) {
+        const userName = result.user?.name || "User"
+        const userRole = result.user?.isVisitor || result.user?.role === "validator" ? "validator" : "website owner"
+
         toast({
-          title: "Welcome back!",
-          description: "You have been successfully logged in.",
+          title: `Welcome back, ${userName}!`,
+          description: `You have been successfully logged in as a ${userRole}.`,
           action: <CheckCircle2 className="h-4 w-4" />,
         })
         onOpenChange(false)
         setEmail("")
         setPassword("")
+
+        // Navigate to dashboard
+        setTimeout(() => {
+          window.location.href = "/dashboard"
+        }, 1000)
       } else {
         const errorMessage = result.error || "Login failed. Please try again."
         setErrors({ general: errorMessage })

@@ -1,72 +1,103 @@
 # models/user_model.py
+"""
+UserModel - Supabase-backed model for `users` table.
+
+Responsibilities:
+- Provide thin CRUD wrappers around Supabase client.
+- Normalize/validate inputs where sensible.
+- Return Supabase response objects (so callers can inspect .data/.status_code)
+- Keep business logic out of model (controllers should enforce flows, rollbacks, etc.)
+"""
+
 from supabase import create_client
-from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
+
 class UserModel:
-    """
-    Handles database operations for users table
-    """
     def __init__(self):
         self.supabase = supabase
+        self.table = "users"
 
-    def create_user(self, name: str, is_visitor: bool = False, 
-                   secret_key: Optional[str] = None, 
-                   agent_url: Optional[str] = None, 
-                   wallet_address: Optional[str] = None) -> Dict[str, Any]:
+    # ------------------------
+    # CRUD
+    # ------------------------
+    def create_user(self, name: str, is_visitor: bool = False, secret_key: str = None,
+                    agent_url: str = None, wallet_address: str = None, role: str = None,
+                    balance_numeric: float = None):
         """
-        Create new user in users table
+        Insert a new user row.
+
+        Parameters:
+          - name: str (required)
+          - is_visitor: bool (optional) - kept for backward compatibility; role takes precedence
+          - secret_key: str (optional)
+          - agent_url: str (optional)
+          - wallet_address: str (optional)
+          - role: one of 'owner'|'validator'|'visitor' (optional)
+          - balance_numeric: numeric (optional)
+
+        Returns:
+          - Supabase response object from .insert(...).execute()
+        Raises:
+          - ValueError for invalid inputs
         """
-        user_data = {
+        if not name:
+            raise ValueError("name is required")
+
+        payload = {
             "name": name,
-            "isVisitor": is_visitor,
+            "isVisitor": bool(is_visitor) if is_visitor is not None else False,
             "secret_key": secret_key,
             "agent_url": agent_url,
             "wallet_address": wallet_address
         }
-        response = self.supabase.table("users").insert(user_data).execute()
-        return response.data[0]
 
-    def get_user_by_id(self, uid: int) -> Optional[Dict[str, Any]]:
-        """Retrieve user details by user ID with proper error handling"""
+        # role precedence: explicit role param -> infer from is_visitor -> default 'owner'
+        if role:
+            payload["role"] = role
+        else:
+            payload["role"] = "validator" if is_visitor else "owner"
+
+        if balance_numeric is not None:
+            payload["balance_numeric"] = balance_numeric
+
         try:
-            result = (
-                self.supabase.table("users")
-                .select("*")
-                .eq("id", uid)
-                .maybe_single()
-                .execute()
-            )
-            
-            if not result.data:
-                print(f"No user found with ID: {uid}")
-                return None
-                
-            return result.data
+            return self.supabase.table(self.table).insert(payload).execute()
         except Exception as e:
-            print(f"Error fetching user {uid}: {str(e)}")
-            return None
+            # don't leak internal exceptions here, let controller decide what to do
+            raise
 
-    def get_all_users(self) -> list:
-        """
-        Retrieve all users
-        """
-        result = self.supabase.table("users").select("*").execute()
-        return result.data
+    def get_all_users(self):
+        """Return supabase response for SELECT * FROM users"""
+        return self.supabase.table(self.table).select("*").execute()
 
-    def update_user(self, uid: int, update_data: Dict[str, Any]) -> Dict[str, Any]:
+    def get_user_by_id(self, uid):
         """
-        Update user by ID
+        Get a single user by id.
+        Returns supabase response object (with .data) or raises on API error.
         """
-        response = self.supabase.table("users").update(update_data).eq("id", uid).execute()
-        return response.data[0]
+        return self.supabase.table(self.table).select("*").eq("id", uid).maybe_single().execute()
 
-    def delete_user(self, uid: int):
+    def update_user(self, uid, data: dict):
         """
-        Delete user by ID
+        Update user row with fields in `data`.
+        Allowed fields are limited to prevent accidental overwrites.
+        Returns supabase response.
         """
-        self.supabase.table("users").delete().eq("id", uid).execute()
+        if not isinstance(data, dict):
+            raise ValueError("data must be a dict")
+
+        allowed = {"name", "isVisitor", "secret_key", "agent_url", "wallet_address", "role", "balance_numeric"}
+        payload = {k: v for k, v in data.items() if k in allowed}
+        if not payload:
+            raise ValueError("No valid fields to update")
+
+        return self.supabase.table(self.table).update(payload).eq("id", uid).execute()
+
+    def delete_user(self, uid):
+        """Delete user row by id (supabase response)"""
+        return self.supabase.table(self.table).delete().eq("id", uid).execute()
