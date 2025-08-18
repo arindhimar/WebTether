@@ -135,7 +135,7 @@ export function ValidatorActivities({ pings = [], websites = [], user }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-card-foreground flex items-center gap-2">
-              <Activity className="h-5 w-5 text-green-600" />
+              <Activity className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               Validator Activities
             </CardTitle>
             <CardDescription className="text-muted-foreground">
@@ -159,14 +159,14 @@ export function ValidatorActivities({ pings = [], websites = [], user }) {
         <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
           <div className="text-center">
             <div className="text-lg font-bold text-card-foreground flex items-center justify-center gap-1">
-              <Coins className="w-4 h-4 text-yellow-600" />
+              <Coins className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               {totalEarnings.toFixed(4)}
             </div>
             <div className="text-xs text-muted-foreground">Total Earned (ETH)</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-card-foreground flex items-center justify-center gap-1">
-              <TrendingUp className="w-4 h-4 text-green-600" />
+              <TrendingUp className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               {successRate}%
             </div>
             <div className="text-xs text-muted-foreground">Success Rate</div>
@@ -182,7 +182,7 @@ export function ValidatorActivities({ pings = [], websites = [], user }) {
           <div className="space-y-2">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto mb-4"></div>
                 <p>Loading validator activities...</p>
               </div>
             ) : activities.length === 0 ? (
@@ -209,9 +209,9 @@ export function ValidatorActivities({ pings = [], websites = [], user }) {
                   <div className="flex items-center gap-3 flex-1">
                     <div className="flex-shrink-0">
                       {activity.success ? (
-                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <CheckCircle className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                       ) : (
-                        <XCircle className="w-5 h-5 text-red-600" />
+                        <XCircle className="w-5 h-5 text-red-500 dark:text-red-400" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -235,10 +235,10 @@ export function ValidatorActivities({ pings = [], websites = [], user }) {
                         </div>
                         {activity.region && (
                           <div className="flex items-center gap-1">
-                            <span>📍 {activity.region}</span>
+                            <span className="text-violet-600 dark:text-violet-400">📍 {activity.region}</span>
                           </div>
                         )}
-                        <div className="font-mono text-xs">{activity.txHash}</div>
+                        <div className="font-mono text-xs bg-muted/50 px-2 py-1 rounded">{activity.txHash}</div>
                       </div>
                     </div>
                   </div>
@@ -247,14 +247,22 @@ export function ValidatorActivities({ pings = [], websites = [], user }) {
                     <Badge
                       variant={activity.success ? "default" : "destructive"}
                       className={
-                        activity.success ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : ""
+                        activity.success
+                          ? "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200 border-violet-200 dark:border-violet-800"
+                          : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200 border-red-200 dark:border-red-800"
                       }
                     >
                       {activity.success ? "Success" : "Failed"}
                     </Badge>
                     <div className="text-right">
                       <div className="text-sm font-medium text-card-foreground">
-                        {activity.earnings > 0 ? `+${activity.earnings.toFixed(4)} ETH` : "0 ETH"}
+                        {activity.earnings > 0 ? (
+                          <span className="text-purple-600 dark:text-purple-400">
+                            +{activity.earnings.toFixed(4)} ETH
+                          </span>
+                        ) : (
+                          "0 ETH"
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground">{getTimeAgo(activity.timestamp)}</div>
                     </div>
@@ -285,3 +293,4 @@ export function ValidatorActivities({ pings = [], websites = [], user }) {
     </Card>
   )
 }
+  

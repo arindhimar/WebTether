@@ -9,32 +9,29 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
   const [activities, setActivities] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
-  console.log("RecentActivity - Component rendered with props:", {
+  console.log("RecentActivity - Props received:", {
     websites: websites.length,
     pings: pings.length,
     user: user?.id,
     isVisitor: user?.isVisitor,
+    pingsData: pings.slice(0, 2), // Show first 2 for debugging
   })
 
   useEffect(() => {
-    console.log("RecentActivity - useEffect triggered")
     if (user && (websites.length > 0 || pings.length > 0)) {
       generateActivities()
-    } else {
-      console.log("RecentActivity - Conditions not met for generating activities")
-      setIsLoading(false)
     }
   }, [websites, pings, user])
 
   const generateActivities = () => {
-    console.log("RecentActivity - Starting generateActivities")
+    console.log("RecentActivity - Starting to generate activities...")
     setIsLoading(true)
 
     try {
       let userActivities = []
 
       if (user?.isVisitor) {
-        console.log("RecentActivity - Processing validator activities")
+        console.log("RecentActivity - Processing validator activities...")
         // Validator activities - show recent pings they performed
         const userPings = pings
           .filter((ping) => {
@@ -50,6 +47,7 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
         console.log(`RecentActivity - Found ${userPings.length} validator pings`)
 
         userActivities = userPings.map((ping) => {
+          // Try to find the website for this ping
           const website = websites.find((w) => w.wid === ping.wid)
           const websiteUrl = website?.url || website?.name || `Website ID: ${ping.wid}`
 
@@ -60,13 +58,16 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
             timestamp: ping.timestamp || ping.created_at,
             url: websiteUrl,
             responseTime: ping.latency_ms,
+            region: ping.region,
+            txHash: ping.tx_hash,
+            fee: ping.fee_paid_numeric || 0,
           }
 
           console.log("RecentActivity - Generated validator activity:", activity)
           return activity
         })
       } else {
-        console.log("RecentActivity - Processing website owner activities")
+        console.log("RecentActivity - Processing website owner activities...")
         // Website owner activities - show pings for their websites
         const userWebsites = websites.filter((website) => website.uid === user.id)
         console.log(`RecentActivity - Found ${userWebsites.length} user websites`)
@@ -85,8 +86,10 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
             type: ping.is_up ? "site_up" : "site_down",
             message: ping.is_up ? "Site is online" : "Site is offline",
             timestamp: ping.timestamp || ping.created_at,
-            url: website?.url || "Unknown site",
+            url: website?.url || website?.name || `Website ID: ${ping.wid}`,
             responseTime: ping.latency_ms,
+            region: ping.region,
+            txHash: ping.tx_hash,
           }
 
           console.log("RecentActivity - Generated website activity:", activity)
@@ -94,7 +97,7 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
         })
       }
 
-      console.log(`RecentActivity - Final activities generated: ${userActivities.length}`, userActivities)
+      console.log(`RecentActivity - Final activities generated:`, userActivities)
       setActivities(userActivities)
     } catch (error) {
       console.error("RecentActivity - Error generating activities:", error)
@@ -108,12 +111,12 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
     switch (type) {
       case "ping_success":
       case "site_up":
-        return <CheckCircle className="h-3 w-3 text-emerald-500" />
+        return <CheckCircle className="h-3 w-3 text-violet-600 dark:text-violet-400" />
       case "ping_failed":
       case "site_down":
-        return <XCircle className="h-3 w-3 text-red-500" />
+        return <XCircle className="h-3 w-3 text-red-500 dark:text-red-400" />
       default:
-        return <Activity className="h-3 w-3 text-blue-500" />
+        return <Activity className="h-3 w-3 text-violet-600 dark:text-violet-400" />
     }
   }
 
@@ -121,12 +124,12 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
     switch (type) {
       case "ping_success":
       case "site_up":
-        return "border-l-emerald-500"
+        return "border-l-violet-500"
       case "ping_failed":
       case "site_down":
         return "border-l-red-500"
       default:
-        return "border-l-blue-500"
+        return "border-l-violet-500"
     }
   }
 
@@ -151,7 +154,7 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
       <CardContent className="p-0">
         <div className="p-3 sm:p-4 border-b border-border/50">
           <div className="flex items-center gap-2">
-            <div className="p-1 rounded bg-gradient-to-br from-blue-500 to-cyan-600 shadow-sm">
+            <div className="p-1 rounded bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm">
               <Activity className="h-3 w-3 text-white" />
             </div>
             <div>
@@ -176,8 +179,8 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
             </div>
           ) : activities.length === 0 ? (
             <div className="p-6 text-center">
-              <div className="mx-auto w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-950/20 dark:to-cyan-950/20 flex items-center justify-center mb-2">
-                <Activity className="h-4 w-4 text-blue-600" />
+              <div className="mx-auto w-8 h-8 rounded-lg bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-950/20 dark:to-purple-950/20 flex items-center justify-center mb-2">
+                <Activity className="h-4 w-4 text-violet-600" />
               </div>
               <h4 className="text-sm font-medium text-foreground mb-1">No Recent Activity</h4>
               <p className="text-xs text-muted-foreground">
@@ -197,33 +200,36 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
             </div>
           ) : (
             <div className="p-2 sm:p-3 space-y-2">
-              {activities.map((activity) => {
-                console.log("RecentActivity - Rendering activity:", activity)
-                return (
-                  <div
-                    key={activity.id}
-                    className={`flex items-start gap-2 p-2 rounded-lg border-l-2 ${getActivityColor(activity.type)} bg-muted/30 hover:bg-muted/50 transition-colors`}
-                  >
-                    <div className="flex-shrink-0 mt-0.5">{getActivityIcon(activity.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-foreground">{activity.message}</p>
-                          <p className="text-xs text-muted-foreground truncate font-mono">
-                            {activity.url.replace(/^https?:\/\//, "")}
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0 text-right">
-                          <p className="text-xs text-muted-foreground">{formatTimeAgo(activity.timestamp)}</p>
-                          {activity.responseTime && (
-                            <p className="text-xs text-muted-foreground">{activity.responseTime}ms</p>
-                          )}
-                        </div>
+              {activities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className={`flex items-start gap-2 p-2 rounded-lg border-l-2 ${getActivityColor(activity.type)} bg-muted/30 hover:bg-muted/50 transition-colors`}
+                >
+                  <div className="flex-shrink-0 mt-0.5">{getActivityIcon(activity.type)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground">{activity.message}</p>
+                        <p className="text-xs text-muted-foreground truncate font-mono">
+                          {activity.url.replace(/^https?:\/\//, "")}
+                        </p>
+                        {activity.region && (
+                          <p className="text-xs text-violet-600 dark:text-violet-400">📍 {activity.region}</p>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-xs text-muted-foreground">{formatTimeAgo(activity.timestamp)}</p>
+                        {activity.responseTime && (
+                          <p className="text-xs text-muted-foreground">{activity.responseTime}ms</p>
+                        )}
+                        {activity.fee > 0 && (
+                          <p className="text-xs text-purple-600 dark:text-purple-400">+{activity.fee.toFixed(4)} ETH</p>
+                        )}
                       </div>
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
           )}
         </div>

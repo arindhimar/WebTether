@@ -14,12 +14,22 @@ import AvailableSites from "../components/dashboard/AvailableSites"
 import UserSettings from "../components/dashboard/UserSettings"
 import { useToast } from "../hooks/use-toast"
 import WalletPage from "./WalletPage"
-import  WalletBalanceWidget  from "../components/WalletBalanceWidget"
-import { LoadingSpinner } from "../components/dashboard/LoadingSpinner"
+import WalletBalanceWidget  from "../components/WalletBalanceWidget"
 import ErrorBoundary from "../components/dashboard/ErrorBoundary"
 import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { AlertCircle, RefreshCw, Plus } from "lucide-react"
+
+export function LoadingPage() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
+        <p className="text-muted-foreground">Loading dashboard...</p>
+      </div>
+    </div>
+  )
+}
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth()
@@ -67,6 +77,8 @@ export default function Dashboard() {
 
     try {
       console.log("Dashboard - Loading data for user:", user.id)
+
+      // Use the correct API methods
       const [websitesResponse, pingsResponse] = await Promise.all([websiteAPI.getAllWebsites(), pingAPI.getAllPings()])
 
       console.log("Dashboard - API Responses:", {
@@ -74,7 +86,7 @@ export default function Dashboard() {
         pings: pingsResponse,
       })
 
-      // Handle the case where pings might be wrapped in an object
+      // Handle the case where responses might be wrapped in objects
       const pingsArray = Array.isArray(pingsResponse) ? pingsResponse : pingsResponse.pings || []
       const websitesArray = Array.isArray(websitesResponse) ? websitesResponse : websitesResponse.websites || []
 
@@ -83,7 +95,8 @@ export default function Dashboard() {
         pings: pingsArray.length,
       })
 
-      const userWebsites = websitesArray.filter((website) => website.uid === user.id)
+      // Filter websites for the current user (if not a visitor)
+      const userWebsites = user.isVisitor ? [] : websitesArray.filter((website) => website.uid === user.id)
 
       const processedWebsites = userWebsites.map((website) => {
         const websitePings = pingsArray.filter((ping) => ping.wid === website.wid)
@@ -309,7 +322,7 @@ export default function Dashboard() {
 
   // Show loading while auth is loading
   if (authLoading) {
-    return <LoadingSpinner />
+    return <LoadingPage />
   }
 
   // Show authentication required if no user
@@ -338,7 +351,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-background">
         <DashboardHeader currentView={currentView} onNavigate={handleNavigation} />
-        <LoadingSpinner />
+        <LoadingPage />
       </div>
     )
   }
