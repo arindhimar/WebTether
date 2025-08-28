@@ -71,7 +71,7 @@ export function PingAnimation({ open, onOpenChange, siteUrl }) {
           title: "Pinging Website",
           subtitle: `Ping ${pingCount}/3 - ${responseTime}ms`,
           icon: Target,
-          color: "from-orange-500 to-red-500",
+          color: "from-blue-500 to-blue-600",
         }
       case "success":
         return {
@@ -110,7 +110,7 @@ export function PingAnimation({ open, onOpenChange, siteUrl }) {
                     {Array.from({ length: 3 }).map((_, i) => (
                       <motion.div
                         key={i}
-                        className="absolute border-2 border-orange-400/30 rounded-full"
+                        className="absolute border-2 border-blue-400/30 rounded-full"
                         initial={{ width: 0, height: 0, opacity: 1 }}
                         animate={{ width: 300, height: 300, opacity: 0 }}
                         transition={{

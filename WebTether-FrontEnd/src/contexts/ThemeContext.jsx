@@ -32,6 +32,11 @@ export function ThemeProvider({ children, defaultTheme = "system", storageKey = 
       localStorage.setItem(storageKey, theme)
       setTheme(theme)
     },
+    toggleTheme: () => {
+      const newTheme = theme === "light" ? "dark" : "light"
+      localStorage.setItem(storageKey, newTheme)
+      setTheme(newTheme)
+    },
   }
 
   return (

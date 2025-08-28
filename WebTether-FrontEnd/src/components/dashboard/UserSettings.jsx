@@ -229,8 +229,8 @@ export default {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2 mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Validator Settings</h1>
-          <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Validator Settings</h1>
+          <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base">
             Configure your Cloudflare Worker to start earning ETH
           </p>
         </div>
@@ -239,15 +239,15 @@ export default {
         <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardContent className="p-4 sm:p-6">
             {isConfigured ? (
-              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
                 <div className="flex-shrink-0">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-green-800 dark:text-green-200 text-sm sm:text-base">
+                  <h3 className="font-semibold text-emerald-800 dark:text-emerald-200 text-sm sm:text-base">
                     Validator Active
                   </h3>
-                  <p className="text-green-700 dark:text-green-300 text-xs sm:text-sm">
+                  <p className="text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm">
                     Your worker is configured and earning ETH
                   </p>
                 </div>
@@ -273,14 +273,14 @@ export default {
         {/* Configuration Form */}
         <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-slate-900 dark:text-white">
               <Server className="h-5 w-5 text-blue-600" />
               Worker Configuration
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
-              <Label htmlFor="agentUrl" className="text-sm font-medium">
+              <Label htmlFor="agentUrl" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Worker URL *
               </Label>
               <Input
@@ -295,7 +295,7 @@ export default {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-3">
-                <Label htmlFor="agentName" className="text-sm font-medium">
+                <Label htmlFor="agentName" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Worker Name
                 </Label>
                 <Input
@@ -308,7 +308,7 @@ export default {
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="agentDescription" className="text-sm font-medium">
+                <Label htmlFor="agentDescription" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Description
                 </Label>
                 <Input
@@ -324,7 +324,7 @@ export default {
             <Button
               onClick={handleSaveSettings}
               disabled={isSaving || !urlValidation.isValid}
-              className="w-full h-12 text-base bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="w-full h-12 text-base bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
             >
               {isSaving ? (
                 <>
@@ -344,8 +344,8 @@ export default {
         {/* Quick Setup Steps */}
         <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <Play className="h-5 w-5 text-green-600" />
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-slate-900 dark:text-white">
+              <Play className="h-5 w-5 text-emerald-600" />
               Quick Setup
             </CardTitle>
           </CardHeader>
@@ -362,45 +362,49 @@ export default {
                   step: "2",
                   title: "Deploy Code",
                   desc: "Copy the worker code below",
-                  color: "from-green-500 to-green-600",
+                  color: "from-emerald-500 to-emerald-600",
                 },
                 {
                   step: "3",
                   title: "Configure URL",
                   desc: "Paste your worker URL above",
-                  color: "from-purple-500 to-purple-600",
+                  color: "from-violet-500 to-violet-600",
                 },
                 {
                   step: "4",
                   title: "Start Earning",
                   desc: "Receive ping requests automatically",
-                  color: "from-orange-500 to-orange-600",
+                  color: "from-amber-500 to-amber-600",
                 },
               ].map((item, index) => (
-                <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-slate-700/50">
+                <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
                   <div
                     className={`w-8 h-8 rounded-full bg-gradient-to-r ${item.color} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
                   >
                     {item.step}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">{item.title}</h4>
-                    <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">{item.desc}</p>
+                    <h4 className="font-medium text-slate-900 dark:text-white text-sm sm:text-base">{item.title}</h4>
+                    <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm">{item.desc}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
                 </div>
               ))}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <Button onClick={() => setShowCode(!showCode)} variant="outline" className="flex-1 h-11">
+              <Button
+                onClick={() => setShowCode(!showCode)}
+                variant="outline"
+                className="flex-1 h-11 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+              >
                 <Code className="h-4 w-4 mr-2" />
                 {showCode ? "Hide Code" : "Show Code"}
               </Button>
               <Button
                 onClick={() => window.open("https://dash.cloudflare.com/", "_blank")}
                 variant="outline"
-                className="flex-1 h-11"
+                className="flex-1 h-11 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open Cloudflare
@@ -413,7 +417,7 @@ export default {
         {showCode && (
           <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-slate-900 dark:text-white">
                 <Globe className="h-5 w-5 text-emerald-600" />
                 Worker Code
               </CardTitle>
@@ -425,14 +429,18 @@ export default {
                 </pre>
                 <Button
                   onClick={() => copyToClipboard(cloudflareWorkerCode)}
-                  className="absolute top-2 right-2 h-8 w-8 p-0"
+                  className="absolute top-2 right-2 h-8 w-8 p-0 bg-slate-700 hover:bg-slate-600"
                   variant="secondary"
                   size="sm"
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <Button onClick={() => copyToClipboard(cloudflareWorkerCode)} className="w-full h-11" variant="outline">
+              <Button
+                onClick={() => copyToClipboard(cloudflareWorkerCode)}
+                className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                variant="outline"
+              >
                 <Copy className="h-4 w-4 mr-2" />
                 Copy Worker Code
               </Button>
@@ -448,7 +456,7 @@ export default {
               title: "Earn ETH",
               desc: "Get paid for validations",
               color:
-                "from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800",
+                "from-emerald-50 to-emerald-50 dark:from-emerald-950/20 dark:to-emerald-950/20 border-emerald-200 dark:border-emerald-800",
             },
             {
               icon: "🌍",
@@ -462,14 +470,14 @@ export default {
               title: "Low Maintenance",
               desc: "Set once, earn passively",
               color:
-                "from-purple-50 to-violet-50 dark:from-purple-950/20 dark:to-violet-950/20 border-purple-200 dark:border-purple-800",
+                "from-violet-50 to-violet-50 dark:from-violet-950/20 dark:to-violet-950/20 border-violet-200 dark:border-violet-800",
             },
             {
               icon: "🚀",
               title: "Fast & Reliable",
               desc: "Cloudflare edge network",
               color:
-                "from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border-orange-200 dark:border-orange-800",
+                "from-amber-50 to-amber-50 dark:from-amber-950/20 dark:to-amber-950/20 border-amber-200 dark:border-amber-800",
             },
           ].map((benefit, index) => (
             <Card key={index} className={`border ${benefit.color} shadow-sm`}>
@@ -477,8 +485,10 @@ export default {
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{benefit.icon}</span>
                   <div>
-                    <h3 className="font-semibold text-sm sm:text-base">{benefit.title}</h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground">{benefit.desc}</p>
+                    <h3 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white">
+                      {benefit.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">{benefit.desc}</p>
                   </div>
                 </div>
               </CardContent>

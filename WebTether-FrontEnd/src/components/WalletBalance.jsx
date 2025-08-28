@@ -95,14 +95,14 @@ export default function WalletBalance() {
 
   if (isLoading) {
     return (
-      <Card className="floating-card">
+      <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 shadow-md">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
                 <Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
               </div>
-              <CardTitle className="text-base sm:text-lg">Wallet Balance</CardTitle>
+              <CardTitle className="text-base sm:text-lg text-slate-900 dark:text-white">Wallet Balance</CardTitle>
             </div>
             <Skeleton className="h-6 w-6 rounded" />
           </div>
@@ -130,13 +130,18 @@ export default function WalletBalance() {
 
   if (error && !balance) {
     return (
-      <Card className="floating-card">
+      <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
         <CardContent className="p-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
               <span>{error}</span>
-              <Button variant="outline" size="sm" onClick={loadWalletBalance} className="ml-4 bg-transparent">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadWalletBalance}
+                className="ml-4 bg-transparent border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
+              >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Retry
               </Button>
@@ -148,20 +153,31 @@ export default function WalletBalance() {
   }
 
   return (
-    <Card className="floating-card">
+    <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 shadow-md">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
               <Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
             </div>
-            <CardTitle className="text-base sm:text-lg">Wallet Balance</CardTitle>
+            <CardTitle className="text-base sm:text-lg text-slate-900 dark:text-white">Wallet Balance</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowBalance(!showBalance)} className="h-6 w-6 p-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowBalance(!showBalance)}
+              className="h-6 w-6 p-0 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+            >
               {showBalance ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
             </Button>
-            <Button variant="ghost" size="sm" onClick={loadWalletBalance} disabled={isLoading} className="h-6 w-6 p-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadWalletBalance}
+              disabled={isLoading}
+              className="h-6 w-6 p-0 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+            >
               <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
           </div>
@@ -172,17 +188,20 @@ export default function WalletBalance() {
         {/* Main Balance */}
         <div className="space-y-2">
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-foreground">
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
               {showBalance ? formatCurrency(balance?.total) : "••••••"}
             </span>
             {balance?.total > 0 && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge
+                variant="secondary"
+                className="text-xs bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+              >
                 <TrendingUp className="h-2.5 w-2.5 mr-1" />
                 Active
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
             {showBalance ? `≈ $${balance?.usdValue?.toFixed(2) || "0.00"} USD` : "≈ $••••"}
           </p>
         </div>
@@ -190,26 +209,30 @@ export default function WalletBalance() {
         {/* Balance Breakdown */}
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="space-y-1">
-            <p className="text-muted-foreground">Available</p>
-            <p className="font-semibold">{showBalance ? formatCurrency(balance?.available) : "••••••"}</p>
+            <p className="text-slate-600 dark:text-slate-400">Available</p>
+            <p className="font-semibold text-slate-900 dark:text-white">
+              {showBalance ? formatCurrency(balance?.available) : "••••••"}
+            </p>
           </div>
           <div className="space-y-1">
-            <p className="text-muted-foreground">Spent</p>
-            <p className="font-semibold">{showBalance ? formatCurrency(balance?.totalSpent) : "••••••"}</p>
+            <p className="text-slate-600 dark:text-slate-400">Spent</p>
+            <p className="font-semibold text-slate-900 dark:text-white">
+              {showBalance ? formatCurrency(balance?.totalSpent) : "••••••"}
+            </p>
           </div>
         </div>
 
         {/* Wallet Address */}
-        <div className="pt-2 border-t border-border/50">
+        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Wallet</span>
-            <span className="font-mono">{formatAddress(balance?.walletAddress)}</span>
+            <span className="text-slate-600 dark:text-slate-400">Wallet</span>
+            <span className="font-mono text-slate-900 dark:text-white">{formatAddress(balance?.walletAddress)}</span>
           </div>
         </div>
 
         {/* Stats */}
         {balance?.totalPings > 0 && (
-          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/50">
+          <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-1">
               <DollarSign className="h-3 w-3" />
               <span>{balance.totalPings} transactions</span>
@@ -219,7 +242,7 @@ export default function WalletBalance() {
 
         {/* Debug Info */}
         {process.env.NODE_ENV === "development" && (
-          <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+          <div className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-2 rounded">
             Debug: Balance loaded: {balance ? "Yes" : "No"}, Error: {error || "None"}
           </div>
         )}

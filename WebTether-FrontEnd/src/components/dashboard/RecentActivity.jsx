@@ -203,7 +203,7 @@ export default function RecentActivity({ websites = [], pings = [], user }) {
               {activities.map((activity) => (
                 <div
                   key={activity.id}
-                  className={`flex items-start gap-2 p-2 rounded-lg border-l-2 ${getActivityColor(activity.type)} bg-muted/30 hover:bg-muted/50 transition-colors`}
+                  className={`flex items-start gap-2 p-2 rounded-lg border-l-2 ${getActivityColor(activity.type)} text-blue-600 dark:text-blue-400 hover:bg-emerald-600/20 transition-colors`}
                 >
                   <div className="flex-shrink-0 mt-0.5">{getActivityIcon(activity.type)}</div>
                   <div className="flex-1 min-w-0">

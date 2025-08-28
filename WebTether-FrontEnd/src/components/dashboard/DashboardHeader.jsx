@@ -47,22 +47,22 @@ export function DashboardHeader({ currentView, onNavigate }) {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-blue-200 dark:border-blue-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 sm:h-16 items-center justify-between">
           {/* Logo and Brand - Always WebTether */}
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
               <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
                 WebTether
               </h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">Network Monitor</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Network Monitor</p>
             </div>
             <Badge variant="secondary" className="hidden md:flex items-center gap-1 text-xs">
               <Zap className="h-3 w-3" />
@@ -82,7 +82,9 @@ export function DashboardHeader({ currentView, onNavigate }) {
                   size="sm"
                   onClick={() => handleNavClick(item.id)}
                   className={`relative transition-all duration-200 ${
-                    isActive ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg" : "hover:bg-muted"
+                    isActive
+                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg"
+                      : "hover:bg-blue-50 dark:hover:bg-blue-950/20"
                   }`}
                 >
                   <Icon className="h-4 w-4 mr-2" />
@@ -90,7 +92,7 @@ export function DashboardHeader({ currentView, onNavigate }) {
                   {isActive && (
                     <motion.div
                       layoutId="activeTab"
-                      className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-md -z-10"
+                      className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700 rounded-md -z-10"
                       initial={false}
                       transition={{ type: "spring", stiffness: 500, damping: 30 }}
                     />
@@ -113,7 +115,7 @@ export function DashboardHeader({ currentView, onNavigate }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full">
                     <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-                      <AvatarFallback className="bg-gradient-to-br from-purple-600 to-pink-600 text-white font-semibold text-sm">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white font-semibold text-sm">
                         {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
@@ -158,7 +160,7 @@ export function DashboardHeader({ currentView, onNavigate }) {
                   {/* Mobile User Info */}
                   <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
                     <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-gradient-to-br from-purple-600 to-pink-600 text-white font-semibold">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white font-semibold">
                         {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
@@ -186,7 +188,9 @@ export function DashboardHeader({ currentView, onNavigate }) {
                           size="lg"
                           onClick={() => handleNavClick(item.id)}
                           className={`justify-start h-12 text-base ${
-                            isActive ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" : "hover:bg-muted"
+                            isActive
+                              ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+                              : "hover:bg-blue-50 dark:hover:bg-blue-950/20"
                           }`}
                         >
                           <Icon className="h-5 w-5 mr-3" />

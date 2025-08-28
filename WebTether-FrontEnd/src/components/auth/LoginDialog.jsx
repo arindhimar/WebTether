@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
@@ -10,8 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { Separator } from "../ui/separator"
 import { Alert, AlertDescription } from "../ui/alert"
 import { useAuth } from "../../contexts/AuthContext"
-import { useToast } from "../../hooks/use-toast"
-import { Loader2, Eye, EyeOff, LogIn, Shield, AlertCircle, CheckCircle2 } from "lucide-react"
+import { useTheme } from "../../contexts/ThemeContext"
+import { toast } from "sonner"
+import { Loader2, Eye, EyeOff, LogIn, Shield, AlertCircle } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
   const [email, setEmail] = useState("")
@@ -20,7 +21,10 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState({})
   const { login } = useAuth()
-  const { toast } = useToast()
+  const { theme } = useTheme()
+  const navigate = useNavigate()
+
+  const isDark = theme === "dark"
 
   const validateForm = () => {
     const newErrors = {}
@@ -45,10 +49,8 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
     e.preventDefault()
 
     if (!validateForm()) {
-      toast({
-        title: "Validation Error",
+      toast.error("Validation Error", {
         description: "Please fix the errors below and try again.",
-        variant: "destructive",
       })
       return
     }
@@ -63,35 +65,32 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
         const userName = result.user?.name || "User"
         const userRole = result.user?.isVisitor || result.user?.role === "validator" ? "validator" : "website owner"
 
-        toast({
-          title: `Welcome back, ${userName}!`,
-          description: `You have been successfully logged in as a ${userRole}.`,
-          action: <CheckCircle2 className="h-4 w-4" />,
+        toast.success(`Welcome back, ${userName}! 🎉`, {
+          description: `Successfully logged in as a ${userRole}. Redirecting to dashboard...`,
+          duration: 3000,
         })
+
         onOpenChange(false)
         setEmail("")
         setPassword("")
 
-        // Navigate to dashboard
         setTimeout(() => {
-          window.location.href = "/dashboard"
+          navigate("/dashboard")
         }, 1000)
       } else {
-        const errorMessage = result.error || "Login failed. Please try again."
+        const errorMessage = result.error || "Invalid email or password. Please try again."
         setErrors({ general: errorMessage })
-        toast({
-          title: "Login Failed",
+        toast.error("Login Failed", {
           description: errorMessage,
-          variant: "destructive",
+          duration: 4000,
         })
       }
     } catch (error) {
-      const errorMessage = error.message || "An unexpected error occurred. Please try again."
+      const errorMessage = error.message || "Unable to connect to the server."
       setErrors({ general: errorMessage })
-      toast({
-        title: "Connection Error",
-        description: "Unable to connect to the server. Please check your internet connection.",
-        variant: "destructive",
+      toast.error("Connection Error", {
+        description: "Please check your internet connection and try again.",
+        duration: 4000,
       })
     } finally {
       setIsLoading(false)
@@ -114,33 +113,36 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-0 gap-0">
-        <Card className="border-0 shadow-none">
+      <DialogContent
+        className={`sm:max-w-[480px] ${isDark ? "bg-slate-800 border-blue-800/30" : "bg-white border-blue-200/50"}`}
+      >
+        <Card className="border-0 shadow-none bg-transparent">
           <CardHeader className="space-y-1 pb-6 text-center">
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 mx-auto mb-4">
+            <div className={`flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-blue-600`}>
               <LogIn className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-            <CardDescription>Sign in to your Web-Tether account to continue monitoring your websites</CardDescription>
+            <CardTitle className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+              Welcome Back
+            </CardTitle>
+            <CardDescription className={`${isDark ? "text-slate-300" : "text-slate-600"}`}>
+              Sign in to your WebTether account to continue monitoring your websites
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {errors.general && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errors.general}</AlertDescription>
+              <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800 dark:text-red-200">{errors.general}</AlertDescription>
               </Alert>
             )}
 
-            <motion.form
-              onSubmit={handleSubmit}
-              className="space-y-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
+                <Label
+                  htmlFor="email"
+                  className={`text-sm font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}
+                >
                   Email Address
                 </Label>
                 <Input
@@ -155,7 +157,7 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
                     }
                   }}
                   disabled={isLoading}
-                  className={`h-11 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  className={`h-11 ${isDark ? "bg-slate-700/50 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300 text-slate-900 placeholder-slate-500"} ${errors.email ? "border-red-500 focus-visible:ring-red-500" : "focus-visible:ring-blue-500"}`}
                 />
                 {errors.email && (
                   <p className="text-sm text-red-600 flex items-center gap-1">
@@ -166,7 +168,10 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
+                <Label
+                  htmlFor="password"
+                  className={`text-sm font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}
+                >
                   Password
                 </Label>
                 <div className="relative">
@@ -182,13 +187,13 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
                       }
                     }}
                     disabled={isLoading}
-                    className={`h-11 pr-10 ${errors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                    className={`h-11 pr-10 ${isDark ? "bg-slate-700/50 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300 text-slate-900 placeholder-slate-500"} ${errors.password ? "border-red-500 focus-visible:ring-red-500" : "focus-visible:ring-blue-500"}`}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className={`absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-600 hover:text-slate-800"}`}
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
                   >
@@ -205,7 +210,7 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 font-medium"
+                className="w-full h-11 font-medium bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white border-0"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -223,10 +228,12 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
+                  <Separator className={`w-full ${isDark ? "bg-slate-600" : "bg-slate-200"}`} />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">New to Web-Tether?</span>
+                  <span className={`px-2 ${isDark ? "bg-slate-800 text-slate-400" : "bg-white text-slate-500"}`}>
+                    New to WebTether?
+                  </span>
                 </div>
               </div>
 
@@ -234,14 +241,14 @@ export function LoginDialog({ open, onOpenChange, onSwitchToSignup }) {
                 <Button
                   type="button"
                   variant="link"
-                  className="p-0 h-auto font-semibold text-blue-600 hover:text-blue-700"
+                  className={`p-0 h-auto font-semibold ${isDark ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-700"}`}
                   onClick={onSwitchToSignup}
                   disabled={isLoading}
                 >
                   Create your account here →
                 </Button>
               </div>
-            </motion.form>
+            </form>
           </CardContent>
         </Card>
       </DialogContent>

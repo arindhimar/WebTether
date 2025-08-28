@@ -46,7 +46,7 @@ export function ValidatorMap() {
           {/* Pulse animation */}
           <motion.div
             className={`absolute inset-0 rounded-full ${
-              validator.status === "active" ? "bg-green-500" : "bg-amber-500"
+              validator.status === "active" ? "bg-green-500" : "bg-blue-500"
             }`}
             animate={{
               scale: [1, 2, 1],
@@ -62,7 +62,7 @@ export function ValidatorMap() {
           {/* Node */}
           <div
             className={`relative w-3 h-3 rounded-full ${
-              validator.status === "active" ? "bg-green-500" : "bg-amber-500"
+              validator.status === "active" ? "bg-green-500" : "bg-blue-500"
             } border-2 border-background shadow-lg`}
           />
 
@@ -98,3 +98,4 @@ export function ValidatorMap() {
     </div>
   )
 }
+c

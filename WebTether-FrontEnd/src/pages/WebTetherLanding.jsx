@@ -1,777 +1,875 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Header } from "../components/layout/Header"
-import { Footer } from "../components/layout/Footer"
-import { Button } from "../components/ui/button"
-import { Card } from "../components/ui/card"
+import { useState, useEffect } from "react"
+import { useTheme } from "../contexts/ThemeContext"
 import { useAuth } from "../contexts/AuthContext"
+import { Button } from "../components/ui/button"
+import { Card, CardContent } from "../components/ui/card"
+import { Badge } from "../components/ui/badge"
+import { LoginDialog } from "../components/auth/LoginDialog"
+import { SignupDialog } from "../components/auth/SignupDialog"
+import { ThemeToggle } from "../components/ui/theme-toggle"
 import {
   Globe,
-  Zap,
-  Users,
-  ArrowRight,
-  CheckCircle,
-  Clock,
-  Coins,
-  Monitor,
-  Network,
-  TrendingUp,
   Shield,
+  ArrowRight,
+  DollarSign,
+  ChevronUp,
+  Menu,
+  X,
+  Rocket,
+  Network,
+  Sparkles,
+  CheckCircle,
   Eye,
-  ChevronDown,
+  Users,
+  Clock,
   Star,
-  ArrowUp,
+  Coins,
+  MapPin,
+  Signal,
+  BarChart3,
+  Layers,
+  Gauge,
 } from "lucide-react"
 
 export default function WebTetherLanding() {
-  const { login } = useAuth()
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const [isVisible, setIsVisible] = useState({})
-  const [activeDemo, setActiveDemo] = useState(0)
+  const { theme } = useTheme()
+  const { user } = useAuth()
+  const [showLoginDialog, setShowLoginDialog] = useState(false)
+  const [showSignupDialog, setShowSignupDialog] = useState(false)
+  const [showValidatorSignup, setShowValidatorSignup] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
-  const [earnings, setEarnings] = useState({ sites: 0, pings: 0, earned: 0 })
-  const [isCalculating, setIsCalculating] = useState(false)
-  const heroRef = useRef(null)
+  const [activePings, setActivePings] = useState([])
+  const [globalStats, setGlobalStats] = useState({
+    validators: 247,
+    websites: 1892,
+    pings: 45672,
+    earnings: 12.45,
+  })
 
-  // Mouse tracking for subtle parallax
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePosition({
-        x: (e.clientX / window.innerWidth) * 100,
-        y: (e.clientY / window.innerHeight) * 100,
-      })
-    }
+    const locations = [
+      { id: 1, name: "New York", x: 25, y: 40, country: "USA", region: "Americas" },
+      { id: 2, name: "London", x: 50, y: 35, country: "UK", region: "Europe" },
+      { id: 3, name: "Tokyo", x: 85, y: 45, country: "Japan", region: "Asia" },
+      { id: 4, name: "Sydney", x: 90, y: 75, country: "Australia", region: "Oceania" },
+      { id: 5, name: "São Paulo", x: 35, y: 70, country: "Brazil", region: "Americas" },
+      { id: 6, name: "Mumbai", x: 75, y: 55, country: "India", region: "Asia" },
+      { id: 7, name: "Lagos", x: 52, y: 60, country: "Nigeria", region: "Africa" },
+      { id: 8, name: "Berlin", x: 52, y: 32, country: "Germany", region: "Europe" },
+      { id: 9, name: "Singapore", x: 80, y: 58, country: "Singapore", region: "Asia" },
+      { id: 10, name: "Toronto", x: 22, y: 38, country: "Canada", region: "Americas" },
+      { id: 11, name: "Dubai", x: 65, y: 50, country: "UAE", region: "Middle East" },
+      { id: 12, name: "Seoul", x: 87, y: 42, country: "South Korea", region: "Asia" },
+    ]
 
-    window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
+    const interval = setInterval(() => {
+      const randomLocation = locations[Math.floor(Math.random() * locations.length)]
+      const newPing = {
+        ...randomLocation,
+        id: Date.now(),
+        timestamp: Date.now(),
+        status: Math.random() > 0.05 ? "success" : "warning",
+        responseTime: Math.floor(Math.random() * 200) + 50,
+      }
+
+      setActivePings((prev) => [...prev.slice(-10), newPing])
+    }, 600)
+
+    return () => clearInterval(interval)
   }, [])
 
-  // Scroll tracking
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGlobalStats((prev) => ({
+        validators: Math.min(prev.validators + Math.floor(Math.random() * 3) + 1, 500),
+        websites: Math.min(prev.websites + Math.floor(Math.random() * 5) + 2, 2500),
+        pings: prev.pings + Math.floor(Math.random() * 50) + 25,
+        earnings: prev.earnings + Math.random() * 0.1,
+      }))
+    }, 2500)
+
+    return () => clearInterval(interval)
+  }, [])
+
   useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 500)
+      setShowScrollTop(window.scrollY > 400)
     }
 
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // Intersection observer for animations
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          setIsVisible((prev) => ({
-            ...prev,
-            [entry.target.id]: entry.isIntersecting,
-          }))
-        })
-      },
-      { threshold: 0.1 },
-    )
+  const handleGetStarted = () => {
+    if (user) {
+      window.location.href = "/dashboard"
+    } else {
+      setShowSignupDialog(true)
+    }
+  }
 
-    document.querySelectorAll("[id]").forEach((el) => {
-      observer.observe(el)
-    })
+  const handleBecomeValidator = () => {
+    if (user) {
+      window.location.href = "/dashboard?view=settings"
+    } else {
+      setShowValidatorSignup(true)
+      setShowSignupDialog(true)
+    }
+  }
 
-    return () => observer.disconnect()
-  }, [])
-
-  // Demo cycling
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveDemo((prev) => (prev + 1) % 3)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // Animated counter for earnings
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setEarnings((prev) => ({
-        sites: Math.min(prev.sites + 1, 1247),
-        pings: Math.min(prev.pings + 23, 89432),
-        earned: Math.min(prev.earned + 0.001, 12.847),
-      }))
-    }, 100)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // Smooth scroll function
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId)
     if (element) {
       element.scrollIntoView({ behavior: "smooth" })
     }
+    setMobileMenuOpen(false)
   }
 
-  // Scroll to top
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  // Handle CTA clicks
-  const handleGetStarted = () => {
-    // Navigate to dashboard or show signup
-    window.history.pushState({}, "", "/dashboard")
-    window.location.reload()
-  }
-
-  const handleBecomeValidator = () => {
-    // Show validator signup flow
-    login({ isVisitor: true })
-  }
-
-  const handleCalculateEarnings = () => {
-    setIsCalculating(true)
-    setTimeout(() => {
-      setIsCalculating(false)
-      scrollToSection("examples")
-    }, 2000)
-  }
-
-  const demoSteps = [
-    {
-      title: "Sarah lists her blog",
-      description: "Pays 0.001 ETH to join the network",
-      icon: Globe,
-      color: "text-blue-400",
-    },
-    {
-      title: "Alex validates the site",
-      description: "Checks uptime, earns 0.0001 ETH",
-      icon: Eye,
-      color: "text-green-400",
-    },
-    {
-      title: "Everyone wins",
-      description: "Sarah gets monitoring, Alex gets paid",
-      icon: TrendingUp,
-      color: "text-purple-400",
-    },
-  ]
-
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden">
-      <Header />
-
-      {/* Hero Section */}
-      <section
-        ref={heroRef}
-        className="relative min-h-screen flex items-center justify-center px-6"
-        style={{
-          background: `radial-gradient(circle at ${mousePosition.x}% ${mousePosition.y}%, hsl(var(--primary) / 0.1) 0%, transparent 50%)`,
-        }}
-      >
-        {/* Animated background grid */}
-        <div className="absolute inset-0 opacity-20 dark:opacity-10">
-          <div
-            className="absolute inset-0 bg-[linear-gradient(hsl(var(--border))_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border))_1px,transparent_1px)] bg-[size:50px_50px]"
-            style={{
-              transform: `translate(${mousePosition.x * 0.1}px, ${mousePosition.y * 0.1}px)`,
-            }}
-          />
-        </div>
-
-        <div className="relative z-10 max-w-6xl mx-auto text-center">
-          {/* Live stats ticker */}
-          <div className="inline-flex items-center gap-4 bg-card/50 backdrop-blur-sm rounded-full px-6 py-3 mb-6 border">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-sm text-muted-foreground">Live Network Stats:</span>
-            </div>
-            <div className="text-sm font-mono">
-              <span className="text-primary">{earnings.sites}</span> sites
-            </div>
-            <div className="text-sm font-mono">
-              <span className="text-primary">{earnings.pings.toLocaleString()}</span> pings
-            </div>
-            <div className="text-sm font-mono">
-              <span className="text-primary">{earnings.earned.toFixed(3)}</span> ETH earned
-            </div>
-          </div>
-
-          {/* Main headline */}
-          <div className="mb-8">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              <span className="block text-muted-foreground">Website monitoring</span>
-              <span className="block bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
-                that pays you back
-              </span>
-            </h1>
-
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              The first monitoring network where listing your website becomes an investment. Pay once, earn forever as
-              validators check your uptime.
-            </p>
-          </div>
-
-          {/* Interactive demo cards */}
-          <div className="grid md:grid-cols-3 gap-6 mb-12 max-w-4xl mx-auto">
-            {demoSteps.map((step, index) => (
-              <Card
-                key={index}
-                className={`relative p-6 bg-card/30 backdrop-blur-sm border transition-all duration-500 cursor-pointer hover:scale-105 ${
-                  activeDemo === index ? "border-primary bg-card/50 scale-105" : "border-border hover:border-primary/50"
-                }`}
-                onClick={() => setActiveDemo(index)}
-              >
-                <div
-                  className={`w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 transition-colors duration-300 ${
-                    activeDemo === index ? "bg-primary/20" : ""
-                  }`}
-                >
-                  <step.icon className={`w-6 h-6 ${activeDemo === index ? step.color : "text-muted-foreground"}`} />
-                </div>
-                <h3 className="font-semibold mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">{step.description}</p>
-
-                {activeDemo === index && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping" />
-                )}
-              </Card>
-            ))}
-          </div>
-
-          {/* CTA buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-            <Button
-              size="lg"
-              onClick={handleGetStarted}
-              className="px-8 py-4 text-lg group transition-all duration-300 hover:scale-105"
-            >
-              Start Earning Today
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={handleBecomeValidator}
-              className="px-8 py-4 text-lg bg-transparent"
-            >
-              Become a Validator
-            </Button>
-          </div>
-
-          {/* Learn more button */}
-          <Button
-            variant="ghost"
-            onClick={() => scrollToSection("problem")}
-            className="group animate-bounce hover:animate-none"
-          >
-            <span className="mr-2">Learn How It Works</span>
-            <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
-          </Button>
-
-          {/* Trust indicators */}
-          <div className="mt-16 flex flex-wrap justify-center items-center gap-8 text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span className="text-sm">Blockchain Secured</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Network className="w-4 h-4" />
-              <span className="text-sm">Decentralized Network</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              <span className="text-sm">Instant Payments</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* The Problem Section */}
-      <section id="problem" className="py-20 px-6 bg-muted/30">
-        <div className="max-w-6xl mx-auto">
-          <div
-            className={`transition-all duration-1000 ${isVisible.problem ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
-          >
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                Monitoring shouldn't be a <span className="text-destructive">money pit</span>
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                Traditional monitoring services charge you monthly fees forever. What if instead, your monitoring
-                investment could pay you back?
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6">
-                <div className="flex items-start gap-4 group">
-                  <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform">
-                    <span className="text-destructive font-bold">×</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Monthly subscription fees</h3>
-                    <p className="text-muted-foreground">Pay $20-100+ every month, forever</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 group">
-                  <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform">
-                    <span className="text-destructive font-bold">×</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Centralized single points of failure</h3>
-                    <p className="text-muted-foreground">When their servers go down, you're blind</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 group">
-                  <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform">
-                    <span className="text-destructive font-bold">×</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Limited monitoring locations</h3>
-                    <p className="text-muted-foreground">Miss regional outages and performance issues</p>
-                  </div>
-                </div>
-              </div>
-
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <header className="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-border/20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-3 cursor-pointer group">
               <div className="relative">
-                <Card className="bg-gradient-to-br from-card to-muted p-8 border hover:shadow-lg transition-shadow">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-destructive mb-2">$1,200</div>
-                    <div className="text-muted-foreground mb-4">Typical yearly monitoring cost</div>
-                    <div className="text-sm text-muted-foreground">For a basic plan with limited features</div>
-                  </div>
-                </Card>
-
-                {/* Floating cost indicators */}
-                <div className="absolute -top-4 -right-4 bg-destructive/20 rounded-full px-3 py-1 text-sm text-destructive animate-bounce">
-                  +$100/mo
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-glow transition-all duration-300 group-hover:scale-110">
+                  <Network className="w-5 h-5 text-white" />
                 </div>
-                <div
-                  className="absolute -bottom-4 -left-4 bg-destructive/20 rounded-full px-3 py-1 text-sm text-destructive animate-bounce"
-                  style={{ animationDelay: "0.5s" }}
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-success rounded-full animate-pulse"></div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold gradient-text">WebTether</span>
+                <span className="text-xs text-muted-foreground -mt-1">Decentralized Monitoring</span>
+              </div>
+            </div>
+
+            <nav className="hidden md:flex items-center space-x-8">
+              {[
+                { label: "How it Works", id: "how-it-works" },
+                { label: "Network", id: "network" },
+                { label: "Earnings", id: "earnings" },
+                { label: "Join Beta", id: "beta" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className="text-muted-foreground hover:text-primary transition-all duration-300 font-medium relative group"
                 >
-                  Forever
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+                  {item.label}
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+                </button>
+              ))}
+            </nav>
 
-      {/* The Solution Section */}
-      <section id="solution" className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div
-            className={`transition-all duration-1000 ${isVisible.solution ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
-          >
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                What if monitoring <span className="text-green-500">paid you instead?</span>
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                WebTether flips the model. You invest once in the network, then earn rewards every time someone monitors
-                your site.
-              </p>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="space-y-8">
-                <div className="flex items-start gap-4 group">
-                  <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Coins className="w-6 h-6 text-green-500" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold mb-3">Pay once, earn forever</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      List your website for just 0.001 ETH (~$3). Every time a validator checks your site, you earn
-                      0.0001 ETH back. Break even after just 10 pings.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 group">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Network className="w-6 h-6 text-blue-500" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold mb-3">Truly decentralized</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      Real humans around the world validate your site's uptime. No single point of failure, no corporate
-                      overlords deciding your fate.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 group">
-                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Users className="w-6 h-6 text-purple-500" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold mb-3">Community-driven quality</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      Validators earn more for accurate monitoring and can be flagged for poor performance. The
-                      community ensures quality through economic incentives.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Interactive earnings calculator */}
-              <div className="relative">
-                <Card className="bg-gradient-to-br from-green-500/10 to-blue-500/10 border-green-500/30 p-8 hover:shadow-lg transition-shadow">
-                  <div className="text-center mb-6">
-                    <h3 className="text-2xl font-bold text-green-500 mb-2">Earnings Calculator</h3>
-                    <p className="text-muted-foreground">See your potential returns</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center py-3 border-b border-green-500/20">
-                      <span>Initial investment</span>
-                      <span className="text-destructive font-mono">-0.001 ETH</span>
-                    </div>
-
-                    <div className="flex justify-between items-center py-3 border-b border-green-500/20">
-                      <span>After 50 pings</span>
-                      <span className="text-green-500 font-mono">+0.004 ETH</span>
-                    </div>
-
-                    <div className="flex justify-between items-center py-3 border-b border-green-500/20">
-                      <span>After 100 pings</span>
-                      <span className="text-green-500 font-mono">+0.009 ETH</span>
-                    </div>
-
-                    <div className="flex justify-between items-center py-3 font-bold">
-                      <span>After 1000 pings</span>
-                      <span className="text-green-500 font-mono text-lg">+0.099 ETH</span>
-                    </div>
-                  </div>
-
+            <div className="hidden md:flex items-center space-x-4">
+              <ThemeToggle />
+              {user ? (
+                <Button onClick={() => (window.location.href = "/dashboard")} className="btn-primary">
+                  Dashboard
+                </Button>
+              ) : (
+                <div className="flex items-center space-x-3">
                   <Button
-                    onClick={handleCalculateEarnings}
-                    disabled={isCalculating}
-                    className="w-full mt-6 bg-green-600 hover:bg-green-700"
+                    variant="ghost"
+                    onClick={() => setShowLoginDialog(true)}
+                    className="hover:bg-primary/10 hover:text-primary"
                   >
-                    {isCalculating ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Calculating...
-                      </>
-                    ) : (
-                      "Calculate My Earnings"
-                    )}
+                    Sign In
+                  </Button>
+                  <Button onClick={handleGetStarted} className="btn-primary interactive-hover">
+                    Join Beta
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="md:hidden flex items-center space-x-3">
+              <ThemeToggle />
+              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {mobileMenuOpen && (
+          <div className="md:hidden glass-effect border-t border-border/20">
+            <div className="container mx-auto px-4 py-4">
+              <nav className="flex flex-col space-y-4">
+                {[
+                  { label: "How it Works", id: "how-it-works" },
+                  { label: "Network", id: "network" },
+                  { label: "Earnings", id: "earnings" },
+                  { label: "Join Beta", id: "beta" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className="text-left text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                {!user && (
+                  <div className="flex flex-col space-y-2 pt-4 border-t border-border/20">
+                    <Button variant="ghost" onClick={() => setShowLoginDialog(true)} className="justify-start">
+                      Sign In
+                    </Button>
+                    <Button onClick={handleGetStarted} className="btn-primary justify-start">
+                      Join Beta
+                    </Button>
+                  </div>
+                )}
+              </nav>
+            </div>
+          </div>
+        )}
+      </header>
+
+      <section className="relative pt-24 pb-20 sm:pt-32 sm:pb-32 hero-gradient overflow-hidden">
+        <div className="absolute inset-0 mesh-gradient opacity-30"></div>
+
+        {/* Floating elements */}
+        <div className="absolute top-20 left-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl animate-float"></div>
+        <div
+          className="absolute top-40 right-20 w-24 h-24 bg-accent/25 rounded-full blur-2xl animate-float"
+          style={{ animationDelay: "1s" }}
+        ></div>
+        <div
+          className="absolute bottom-20 left-1/4 w-20 h-20 bg-secondary/15 rounded-full blur-xl animate-float"
+          style={{ animationDelay: "2s" }}
+        ></div>
+
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left column - Content */}
+              <div className="space-y-8 animate-slide-up">
+                <Badge className="glass-effect border-primary/30 text-primary px-4 py-2 text-sm font-medium w-fit">
+                  <Rocket className="w-4 h-4 mr-2" />
+                  Revolutionary Web3 Technology
+                </Badge>
+
+                <div className="space-y-6">
+                  <h1 className="heading-xl">
+                    <span className="gradient-text">Get Paid</span>
+                    <br />
+                    <span className="text-foreground">For Being Monitored</span>
+                  </h1>
+
+                  <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
+                    The world's first decentralized monitoring network where website owners{" "}
+                    <span className="text-primary font-semibold">earn ETH</span> while getting monitored by a global
+                    community of validators.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button onClick={handleGetStarted} size="lg" className="btn-primary group px-8 py-4 text-lg">
+                    Start Earning Today
+                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
                   </Button>
 
-                  <div className="mt-6 p-4 bg-card/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground text-center">
-                      Popular sites get pinged 10-50 times per day. Your monitoring pays for itself and keeps earning.
-                    </p>
+                  <Button
+                    onClick={handleBecomeValidator}
+                    variant="outline"
+                    size="lg"
+                    className="btn-glass group px-8 py-4 text-lg bg-transparent"
+                  >
+                    <Shield className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" />
+                    Become Validator
+                  </Button>
+                </div>
+
+                {/* Stats row */}
+                <div className="grid grid-cols-3 gap-6 pt-8">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">{globalStats.validators}</div>
+                    <div className="text-sm text-muted-foreground">Active Validators</div>
                   </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-accent">{globalStats.websites}</div>
+                    <div className="text-sm text-muted-foreground">Monitored Sites</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-secondary">${globalStats.earnings.toFixed(2)}</div>
+                    <div className="text-sm text-muted-foreground">Avg Daily Earnings</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right column - Interactive Network Visualization */}
+              <div className="relative animate-bounce-in" style={{ animationDelay: "0.3s" }}>
+                <Card className="modern-card p-8">
+                  <CardContent className="p-0">
+                    <div className="text-center mb-6">
+                      <h3 className="text-xl font-bold text-foreground mb-2 flex items-center justify-center gap-2">
+                        <Eye className="w-5 h-5 text-primary" />
+                        Live Global Network
+                      </h3>
+                      <p className="text-muted-foreground text-sm">Real-time monitoring activity worldwide</p>
+                    </div>
+
+                    {/* Network visualization */}
+                    <div className="relative w-full h-80 glass-effect rounded-2xl overflow-hidden border border-primary/20">
+                      {/* World map grid */}
+                      <div className="absolute inset-0 opacity-20">
+                        <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                          <defs>
+                            <pattern id="worldGrid" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                              <path d="M 8 0 L 0 0 0 8" fill="none" stroke="currentColor" strokeWidth="0.3" />
+                            </pattern>
+                          </defs>
+                          <rect width="100" height="100" fill="url(#worldGrid)" />
+                        </svg>
+                      </div>
+
+                      {/* Active ping locations */}
+                      {activePings.map((ping, index) => (
+                        <div
+                          key={ping.id}
+                          className="absolute w-4 h-4 -translate-x-2 -translate-y-2"
+                          style={{
+                            left: `${ping.x}%`,
+                            top: `${ping.y}%`,
+                            animationDelay: `${index * 0.1}s`,
+                          }}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full animate-ping ${ping.status === "success" ? "bg-success" : "bg-warning"}`}
+                          />
+                          <div
+                            className={`absolute inset-0 w-4 h-4 rounded-full ${ping.status === "success" ? "bg-success/60" : "bg-warning/60"}`}
+                          />
+
+                          {/* Tooltip */}
+                          <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                            <div className="glass-effect px-3 py-2 rounded-lg border border-border/20 text-xs whitespace-nowrap">
+                              <div className="font-medium text-foreground">{ping.name}</div>
+                              <div className="text-muted-foreground">{ping.responseTime}ms</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Connection lines */}
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                        <defs>
+                          <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
+                            <stop offset="50%" stopColor="hsl(var(--accent))" stopOpacity="0.6" />
+                            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
+                          </linearGradient>
+                        </defs>
+                        {activePings.slice(0, 5).map((ping, index) => {
+                          const nextPing = activePings[(index + 1) % Math.min(activePings.length, 5)]
+                          if (!nextPing) return null
+                          return (
+                            <line
+                              key={`line-${ping.id}`}
+                              x1={`${ping.x}%`}
+                              y1={`${ping.y}%`}
+                              x2={`${nextPing.x}%`}
+                              y2={`${nextPing.y}%`}
+                              stroke="url(#connectionGradient)"
+                              strokeWidth="1.5"
+                              className="animate-pulse"
+                              strokeDasharray="4,4"
+                            />
+                          )
+                        })}
+                      </svg>
+
+                      {/* Status indicator */}
+                      <div className="absolute top-4 right-4 status-up">
+                        <div className="w-2 h-2 bg-success rounded-full animate-pulse mr-2"></div>
+                        Network Online
+                      </div>
+                    </div>
+
+                    {/* Live stats */}
+                    <div className="grid grid-cols-3 gap-4 mt-6">
+                      <div className="text-center glass-effect p-3 rounded-lg">
+                        <div className="text-lg font-bold text-primary">{globalStats.pings.toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                          <Signal className="w-3 h-3" />
+                          Pings Today
+                        </div>
+                      </div>
+                      <div className="text-center glass-effect p-3 rounded-lg">
+                        <div className="text-lg font-bold text-accent">99.9%</div>
+                        <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                          <Gauge className="w-3 h-3" />
+                          Uptime
+                        </div>
+                      </div>
+                      <div className="text-center glass-effect p-3 rounded-lg">
+                        <div className="text-lg font-bold text-secondary">47ms</div>
+                        <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Avg Response
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" className="py-20 bg-muted/20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="heading-lg mb-6 text-foreground">How WebTether Works</h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Three simple steps to start earning from your website monitoring
+            </p>
+          </div>
+
+          <div className="max-w-6xl mx-auto">
+            <div className="grid lg:grid-cols-3 gap-8">
+              {[
+                {
+                  step: "01",
+                  icon: Globe,
+                  title: "Add Your Website",
+                  description:
+                    "Register your website in our decentralized network. No complex setup required - just provide your URL and you're ready to go.",
+                  color: "from-primary to-primary/80",
+                },
+                {
+                  step: "02",
+                  icon: Users,
+                  title: "Validators Monitor",
+                  description:
+                    "Global validators continuously ping your website, checking uptime, performance, and security. They earn rewards for their service.",
+                  color: "from-accent to-accent/80",
+                },
+                {
+                  step: "03",
+                  icon: Coins,
+                  title: "You Get Paid",
+                  description:
+                    "Receive ETH payments for participating in the network. The more reliable your site, the more you earn from the monitoring ecosystem.",
+                  color: "from-success to-success/80",
+                },
+              ].map((item, index) => (
+                <div key={index} className="relative">
+                  <Card className="modern-card h-full">
+                    <CardContent className="p-8 text-center">
+                      <div className="relative mb-6">
+                        <div
+                          className={`w-20 h-20 rounded-3xl bg-gradient-to-br ${item.color} flex items-center justify-center mx-auto shadow-glow`}
+                        >
+                          <item.icon className="w-10 h-10 text-white" />
+                        </div>
+                        <Badge className="absolute -top-2 -right-2 bg-background border-2 border-primary text-primary font-bold px-2 py-1">
+                          {item.step}
+                        </Badge>
+                      </div>
+
+                      <h3 className="text-2xl font-bold mb-4 text-foreground">{item.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Connection arrow */}
+                  {index < 2 && (
+                    <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
+                      <ArrowRight className="w-8 h-8 text-primary" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="network" className="py-20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="heading-lg mb-6 text-foreground">Global Validator Network</h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Powered by a decentralized network of validators ensuring 24/7 monitoring coverage
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+            {/* Left - Network stats */}
+            <div className="space-y-8">
+              <div className="grid grid-cols-2 gap-6">
+                {[
+                  { icon: Shield, label: "Active Validators", value: "247+", color: "text-primary" },
+                  { icon: MapPin, label: "Global Locations", value: "50+", color: "text-accent" },
+                  { icon: Clock, label: "Average Response", value: "47ms", color: "text-success" },
+                  { icon: BarChart3, label: "Network Uptime", value: "99.9%", color: "text-secondary" },
+                ].map((stat, index) => (
+                  <Card key={index} className="modern-card">
+                    <CardContent className="p-6 text-center">
+                      <stat.icon className={`w-8 h-8 ${stat.color} mx-auto mb-3`} />
+                      <div className={`text-2xl font-bold ${stat.color} mb-1`}>{stat.value}</div>
+                      <div className="text-sm text-muted-foreground">{stat.label}</div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <Card className="modern-card">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-4 text-foreground flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-primary" />
+                    Validator Benefits
+                  </h3>
+                  <div className="space-y-3">
+                    {[
+                      "Earn ETH rewards for monitoring websites",
+                      "Contribute to global web infrastructure",
+                      "Flexible participation - monitor when you want",
+                      "Transparent reward distribution",
+                      "Build reputation in the network",
+                    ].map((benefit, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
+                        <span className="text-muted-foreground">{benefit}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right - Validator map */}
+            <div className="relative">
+              <Card className="modern-card">
+                <CardContent className="p-8">
+                  <h3 className="text-xl font-bold mb-6 text-foreground text-center">Live Validator Activity</h3>
+
+                  <div className="relative w-full h-96 glass-effect rounded-2xl overflow-hidden border border-primary/20">
+                    {/* Validator locations */}
+                    {[
+                      { name: "North America", x: 20, y: 30, count: 89 },
+                      { name: "Europe", x: 50, y: 25, count: 76 },
+                      { name: "Asia", x: 80, y: 40, count: 82 },
+                      { name: "South America", x: 30, y: 70, count: 23 },
+                      { name: "Africa", x: 55, y: 60, count: 18 },
+                      { name: "Oceania", x: 85, y: 75, count: 12 },
+                    ].map((region, index) => (
+                      <div
+                        key={index}
+                        className="absolute group cursor-pointer"
+                        style={{ left: `${region.x}%`, top: `${region.y}%` }}
+                      >
+                        <div className="relative">
+                          <div className="w-6 h-6 bg-primary rounded-full animate-pulse shadow-glow"></div>
+                          <div className="absolute inset-0 w-6 h-6 bg-primary/30 rounded-full animate-ping"></div>
+
+                          {/* Tooltip */}
+                          <div className="absolute -top-16 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                            <div className="glass-effect px-3 py-2 rounded-lg border border-border/20 text-xs whitespace-nowrap">
+                              <div className="font-medium text-foreground">{region.name}</div>
+                              <div className="text-muted-foreground">{region.count} validators</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Background pattern */}
+                    <div className="absolute inset-0 opacity-10">
+                      <svg className="w-full h-full" viewBox="0 0 100 100">
+                        <defs>
+                          <pattern id="validatorGrid" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+                            <circle cx="5" cy="5" r="0.5" fill="currentColor" opacity="0.3" />
+                          </pattern>
+                        </defs>
+                        <rect width="100" height="100" fill="url(#validatorGrid)" />
+                      </svg>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="earnings" className="py-20 bg-muted/20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="heading-lg mb-6 text-foreground">Earning Potential</h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Transform your website monitoring from a cost center into a revenue stream
+            </p>
+          </div>
+
+          <div className="max-w-6xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left - Earnings breakdown */}
+              <div className="space-y-8">
+                <Card className="modern-card">
+                  <CardContent className="p-8">
+                    <h3 className="text-2xl font-bold mb-6 text-foreground flex items-center gap-2">
+                      <DollarSign className="w-6 h-6 text-success" />
+                      Website Owner Earnings
+                    </h3>
+
+                    <div className="space-y-6">
+                      {[
+                        {
+                          metric: "Base Monitoring Reward",
+                          amount: "$5-15",
+                          period: "per day",
+                          description: "Earn for participating in the network",
+                        },
+                        {
+                          metric: "Uptime Bonus",
+                          amount: "$2-8",
+                          period: "per day",
+                          description: "Extra rewards for high availability",
+                        },
+                        {
+                          metric: "Performance Bonus",
+                          amount: "$1-5",
+                          period: "per day",
+                          description: "Fast response times = more rewards",
+                        },
+                      ].map((earning, index) => (
+                        <div key={index} className="flex items-center justify-between p-4 glass-effect rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-semibold text-foreground">{earning.metric}</div>
+                            <div className="text-sm text-muted-foreground">{earning.description}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-success">{earning.amount}</div>
+                            <div className="text-xs text-muted-foreground">{earning.period}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-6 p-4 bg-success/10 rounded-lg border border-success/20">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground">Potential Monthly Earnings</span>
+                        <span className="text-xl font-bold text-success">$240-840</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Based on average website performance and network participation
+                      </p>
+                    </div>
+                  </CardContent>
                 </Card>
 
-                {/* Floating profit indicator */}
-                <div className="absolute -top-4 -right-4 bg-green-500/20 rounded-full px-4 py-2 text-green-500 animate-pulse">
-                  <TrendingUp className="w-4 h-4 inline mr-1" />
-                  Profit!
-                </div>
+                <Card className="modern-card">
+                  <CardContent className="p-8">
+                    <h3 className="text-2xl font-bold mb-6 text-foreground flex items-center gap-2">
+                      <Shield className="w-6 h-6 text-primary" />
+                      Validator Earnings
+                    </h3>
+
+                    <div className="space-y-4">
+                      {[
+                        { metric: "Per Website Monitored", amount: "$0.10-0.50", period: "per ping" },
+                        { metric: "Accuracy Bonus", amount: "$5-20", period: "per day" },
+                        { metric: "Network Contribution", amount: "$10-50", period: "per week" },
+                      ].map((earning, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 glass-effect rounded-lg">
+                          <span className="text-foreground">{earning.metric}</span>
+                          <div className="text-right">
+                            <div className="font-bold text-primary">{earning.amount}</div>
+                            <div className="text-xs text-muted-foreground">{earning.period}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right - Earnings calculator */}
+              <div className="space-y-8">
+                <Card className="modern-card">
+                  <CardContent className="p-8">
+                    <h3 className="text-xl font-bold mb-6 text-foreground text-center">Earnings Calculator</h3>
+
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <div className="text-4xl font-bold gradient-text mb-2">
+                          ${(globalStats.earnings * 30).toFixed(0)}
+                        </div>
+                        <div className="text-muted-foreground">Estimated Monthly Earnings</div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-4 glass-effect rounded-lg">
+                          <div className="text-2xl font-bold text-primary">{globalStats.earnings.toFixed(2)}</div>
+                          <div className="text-sm text-muted-foreground">Daily Average</div>
+                        </div>
+                        <div className="text-center p-4 glass-effect rounded-lg">
+                          <div className="text-2xl font-bold text-accent">{(globalStats.earnings * 7).toFixed(0)}</div>
+                          <div className="text-sm text-muted-foreground">Weekly Total</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Base Monitoring</span>
+                          <span className="text-foreground">$8.50/day</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Uptime Bonus (99.9%)</span>
+                          <span className="text-foreground">$3.95/day</span>
+                        </div>
+                        <div className="flex justify-between text-sm border-t border-border/20 pt-2">
+                          <span className="font-semibold text-foreground">Total Daily</span>
+                          <span className="font-bold text-success">${globalStats.earnings.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="modern-card">
+                  <CardContent className="p-6">
+                    <h4 className="font-bold mb-4 text-foreground flex items-center gap-2">
+                      <Star className="w-4 h-4 text-warning" />
+                      Why You Earn More
+                    </h4>
+                    <div className="space-y-3">
+                      {[
+                        "Network effects increase rewards over time",
+                        "Higher uptime = exponentially higher rewards",
+                        "Early adopters get bonus multipliers",
+                        "Referral bonuses for bringing new sites",
+                      ].map((reason, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
+                          <span className="text-sm text-muted-foreground">{reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works - Interactive Timeline */}
-      <section id="how-it-works" className="py-20 px-6 bg-muted/30">
-        <div className="max-w-6xl mx-auto">
-          <div
-            className={`transition-all duration-1000 ${isVisible["how-it-works"] ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
-          >
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                Simple as <span className="text-primary">1, 2, 3</span>
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                No complex setup, no monthly fees, no vendor lock-in. Just smart economics that work for everyone.
-              </p>
-            </div>
-
-            <div className="relative">
-              {/* Timeline line */}
-              <div className="absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-blue-500 via-purple-500 to-green-500 rounded-full opacity-30" />
-
-              <div className="space-y-16">
-                {/* Step 1 */}
-                <div className="flex items-center gap-8 lg:gap-16">
-                  <div className="flex-1 text-right">
-                    <Card className="bg-card/50 backdrop-blur-sm p-6 border hover:border-blue-500/50 transition-colors hover:shadow-lg">
-                      <h3 className="text-2xl font-bold mb-3 text-blue-500">List Your Website</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Pay 0.001 ETH to add your site to our decentralized monitoring network. That's about $3 - less
-                        than a coffee.
-                      </p>
-                      <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4" />
-                        <span>Takes 2 minutes</span>
-                      </div>
-                    </Card>
-                  </div>
-
-                  <div className="relative z-10 w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform cursor-pointer">
-                    1
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="w-64 h-32 bg-card/30 rounded-lg border flex items-center justify-center hover:border-blue-500/50 transition-colors">
-                      <Globe className="w-8 h-8 text-blue-500" />
-                    </div>
-                  </div>
+      <section id="beta" className="py-20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <Card className="modern-card shadow-glow">
+              <CardContent className="p-12">
+                <div className="w-24 h-24 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">
+                  <Sparkles className="w-12 h-12 text-white" />
                 </div>
 
-                {/* Step 2 */}
-                <div className="flex items-center gap-8 lg:gap-16">
-                  <div className="flex-1">
-                    <div className="w-64 h-32 bg-card/30 rounded-lg border flex items-center justify-center ml-auto hover:border-purple-500/50 transition-colors">
-                      <Eye className="w-8 h-8 text-purple-500" />
+                <h2 className="heading-md mb-6 text-foreground">Join the Beta Revolution</h2>
+                <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+                  Be among the first to experience the future of website monitoring and start earning from day one
+                </p>
+
+                <div className="grid md:grid-cols-2 gap-6 mb-8 text-left max-w-2xl mx-auto">
+                  {[
+                    "Priority access to the platform",
+                    "Exclusive early adopter rewards",
+                    "Direct input on feature development",
+                    "Lifetime discount on premium features",
+                    "Special validator status opportunities",
+                    "Community recognition as a pioneer",
+                  ].map((benefit, index) => (
+                    <div key={index} className="flex items-center space-x-3">
+                      <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
+                      <span className="text-muted-foreground">{benefit}</span>
                     </div>
-                  </div>
-
-                  <div className="relative z-10 w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform cursor-pointer">
-                    2
-                  </div>
-
-                  <div className="flex-1">
-                    <Card className="bg-card/50 backdrop-blur-sm p-6 border hover:border-purple-500/50 transition-colors hover:shadow-lg">
-                      <h3 className="text-2xl font-bold mb-3 text-purple-500">Validators Monitor</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Real people around the world ping your website to check if it's up. They earn rewards for
-                        accurate monitoring.
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="w-4 h-4" />
-                        <span>Global validator network</span>
-                      </div>
-                    </Card>
-                  </div>
+                  ))}
                 </div>
 
-                {/* Step 3 */}
-                <div className="flex items-center gap-8 lg:gap-16">
-                  <div className="flex-1 text-right">
-                    <Card className="bg-card/50 backdrop-blur-sm p-6 border hover:border-green-500/50 transition-colors hover:shadow-lg">
-                      <h3 className="text-2xl font-bold mb-3 text-green-500">You Earn Rewards</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Every ping earns you 0.0001 ETH. The more reliable your site, the more validators will check it,
-                        the more you earn.
-                      </p>
-                      <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground">
-                        <Coins className="w-4 h-4" />
-                        <span>Automatic payments</span>
-                      </div>
-                    </Card>
-                  </div>
-
-                  <div className="relative z-10 w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform cursor-pointer">
-                    3
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="w-64 h-32 bg-card/30 rounded-lg border flex items-center justify-center hover:border-green-500/50 transition-colors">
-                      <TrendingUp className="w-8 h-8 text-green-500" />
-                    </div>
-                  </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+                  <Button onClick={handleGetStarted} size="lg" className="btn-primary group px-8 py-4 text-lg">
+                    Join Beta Waitlist
+                    <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
+                  </Button>
+                  <Button
+                    onClick={handleBecomeValidator}
+                    variant="outline"
+                    size="lg"
+                    className="btn-glass group px-8 py-4 text-lg bg-transparent"
+                  >
+                    <Shield className="w-6 h-6 mr-3 group-hover:rotate-12 transition-transform duration-300" />
+                    Become Pioneer Validator
+                  </Button>
                 </div>
+
+                <p className="text-sm text-muted-foreground">
+                  No commitment required • Be notified when we launch • Shape the future of monitoring
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <footer className="py-16 border-t border-border/20 glass-effect">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="flex items-center justify-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-glow">
+                <Network className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-2xl font-bold gradient-text">WebTether</span>
+                <span className="text-sm text-muted-foreground -mt-1">Decentralized Monitoring Network</span>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Real Examples Section */}
-      <section id="examples" className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div
-            className={`transition-all duration-1000 ${isVisible.examples ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
-          >
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                Real people, <span className="text-yellow-500">real earnings</span>
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                See how different types of websites perform on our network
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* Blog example */}
-              <Card className="bg-card/30 border p-6 hover:border-blue-500/50 transition-all duration-300 hover:scale-105 hover:shadow-lg group">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Monitor className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Tech Blog</h3>
-                    <p className="text-sm text-muted-foreground">Personal website</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Daily pings</span>
-                    <span>15-25</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Monthly earnings</span>
-                    <span className="text-green-500">~0.05 ETH</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Break even</span>
-                    <span className="text-primary">Day 1</span>
-                  </div>
-                </div>
-
-                <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-3 h-3 text-yellow-500" />
-                    "My blog monitoring pays for my hosting now!" - Sarah K.
-                  </div>
-                </div>
-              </Card>
-
-              {/* E-commerce example */}
-              <Card className="bg-card/30 border p-6 hover:border-purple-500/50 transition-all duration-300 hover:scale-105 hover:shadow-lg group">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Globe className="w-5 h-5 text-purple-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Online Store</h3>
-                    <p className="text-sm text-muted-foreground">E-commerce site</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Daily pings</span>
-                    <span>40-60</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Monthly earnings</span>
-                    <span className="text-green-500">~0.15 ETH</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Break even</span>
-                    <span className="text-primary">Day 1</span>
-                  </div>
-                </div>
-
-                <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-3 h-3 text-yellow-500" />
-                    "Better uptime monitoring than my old $50/mo service" - Mike R.
-                  </div>
-                </div>
-              </Card>
-
-              {/* SaaS example */}
-              <Card className="bg-card/30 border p-6 hover:border-green-500/50 transition-all duration-300 hover:scale-105 hover:shadow-lg group">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Zap className="w-5 h-5 text-green-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">SaaS Platform</h3>
-                    <p className="text-sm text-muted-foreground">Business app</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Daily pings</span>
-                    <span>80-120</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Monthly earnings</span>
-                    <span className="text-green-500">~0.3 ETH</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Break even</span>
-                    <span className="text-primary">Day 1</span>
-                  </div>
-                </div>
-
-                <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-3 h-3 text-yellow-500" />
-                    "Replaced 3 monitoring services with this one" - Lisa T.
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section id="cta" className="py-20 px-6 bg-gradient-to-br from-primary/10 to-purple-500/10">
-        <div className="max-w-4xl mx-auto text-center">
-          <div
-            className={`transition-all duration-1000 ${isVisible.cta ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Ready to turn monitoring into <span className="text-green-500">profit?</span>
-            </h2>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join the first monitoring network that pays you back. List your website today and start earning from every
-              ping.
+            <p className="text-muted-foreground mb-6 text-lg">
+              Pioneering the future of decentralized website monitoring
             </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-              <Button
-                size="lg"
-                onClick={handleGetStarted}
-                className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 px-8 py-4 text-lg group transition-all duration-300 hover:scale-105"
-              >
-                List Your Website
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={handleBecomeValidator}
-                className="px-8 py-4 text-lg hover:scale-105 transition-transform bg-transparent"
-              >
-                Become a Validator
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap justify-center items-center gap-6 text-muted-foreground text-sm">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>No monthly fees</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Instant setup</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Earn from day one</span>
-              </div>
+            <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
+              <span>© 2024 WebTether. Built for the</span>
+              <span className="text-primary font-semibold">decentralized future</span>
             </div>
           </div>
         </div>
-      </section>
+      </footer>
 
-      {/* Scroll to top button */}
       {showScrollTop && (
-        <Button
+        <button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 p-0 shadow-lg hover:scale-110 transition-all duration-300"
-          size="sm"
+          className="fixed bottom-8 right-8 z-40 w-14 h-14 glass-effect border border-primary/30 shadow-glow text-primary rounded-2xl transition-all duration-300 flex items-center justify-center group interactive-hover"
         >
-          <ArrowUp className="w-5 h-5" />
-        </Button>
+          <ChevronUp className="w-6 h-6 group-hover:-translate-y-1 transition-transform duration-300" />
+        </button>
       )}
 
-      <Footer />
+      {/* Dialogs */}
+      <LoginDialog
+        open={showLoginDialog}
+        onOpenChange={setShowLoginDialog}
+        onSwitchToSignup={() => {
+          setShowLoginDialog(false)
+          setShowSignupDialog(true)
+        }}
+      />
+      <SignupDialog
+        open={showSignupDialog}
+        onOpenChange={setShowSignupDialog}
+        defaultIsValidator={showValidatorSignup}
+        onSwitchToLogin={() => {
+          setShowSignupDialog(false)
+          setShowLoginDialog(true)
+        }}
+      />
     </div>
   )
 }

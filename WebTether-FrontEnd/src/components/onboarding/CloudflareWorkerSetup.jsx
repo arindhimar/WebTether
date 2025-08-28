@@ -158,7 +158,7 @@ async function handleRequest(request) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Cloud className="h-5 w-5 text-orange-500" />
+            <Cloud className="h-5 w-5 text-blue-600" />
             Setup Your Cloudflare Worker
           </CardTitle>
           <CardDescription>
@@ -190,7 +190,7 @@ async function handleRequest(request) {
 
               <div className="space-y-3 text-sm">
                 <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                     1
                   </span>
                   <div>
@@ -211,7 +211,7 @@ async function handleRequest(request) {
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                     2
                   </span>
                   <div>
@@ -235,7 +235,7 @@ async function handleRequest(request) {
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                     3
                   </span>
                   <div>
@@ -245,7 +245,7 @@ async function handleRequest(request) {
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                     4
                   </span>
                   <div>
@@ -274,7 +274,7 @@ async function handleRequest(request) {
             <Button
               onClick={handleSaveAgent}
               disabled={isLoading || !agentUrl.trim()}
-              className="bg-orange-500 hover:bg-orange-600 flex-1"
+              className="bg-blue-600 hover:bg-blue-700 flex-1"
             >
               {isLoading ? "Configuring..." : "Configure Worker"}
             </Button>

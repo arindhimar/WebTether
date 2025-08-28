@@ -311,7 +311,7 @@ export default function WalletPage() {
                 {walletData.transactions.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-border/50 bg-gradient-to-r from-background to-muted/20 hover:shadow-sm transition-all duration-200"
+                    className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-border/50 bg-gradient-to-r text-blue-600 dark:text-blue-400 hover:shadow-sm transition-all duration-200"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="p-2 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex-shrink-0">

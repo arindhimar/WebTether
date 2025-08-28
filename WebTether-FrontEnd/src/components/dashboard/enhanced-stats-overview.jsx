@@ -70,7 +70,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
 
   const MetricCard = ({ title, value, subtitle, icon: Icon, gradient, trend, badge, status, tooltip, delay = 0 }) => (
     <Card
-      className="floating-card overflow-hidden animate-scale-in hover:shadow-xl transition-all duration-300"
+      className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden animate-scale-in hover:shadow-xl transition-all duration-300"
       style={{ animationDelay: `${delay}ms` }}
     >
       <CardContent className="p-0">
@@ -79,22 +79,25 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
           <div className="flex items-start justify-between mb-4">
             <div className="space-y-2 flex-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</p>
                 {status && <StatusIndicator status={status} variant="dot" size="sm" />}
               </div>
               <div className="flex items-baseline gap-2">
                 <EnhancedTooltip content={tooltip}>
-                  <p className="text-3xl font-bold text-foreground hover:text-primary transition-colors cursor-help">
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-help">
                     {value}
                   </p>
                 </EnhancedTooltip>
                 {badge && (
-                  <Badge variant="secondary" className="text-xs px-2 py-0.5 animate-bounce-in">
+                  <Badge
+                    variant="secondary"
+                    className="text-xs px-2 py-0.5 animate-bounce-in bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                  >
                     {badge}
                   </Badge>
                 )}
               </div>
-              {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+              {subtitle && <p className="text-sm text-slate-600 dark:text-slate-300">{subtitle}</p>}
             </div>
             <div
               className={`p-3 rounded-2xl bg-gradient-to-br ${gradient} shadow-lg transform hover:scale-110 transition-transform duration-200`}
@@ -123,7 +126,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
     return (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="floating-card animate-pulse">
+          <Card key={i} className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm animate-pulse">
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -153,7 +156,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
             value={stats.totalPings.toLocaleString()}
             subtitle="Sites validated"
             icon={Target}
-            gradient="from-violet-500 to-purple-600"
+            gradient="from-blue-500 to-blue-600"
             trend={{ value: stats.weeklyGrowth, label: "this week" }}
             status="online"
             tooltip={`You've successfully validated ${stats.totalPings} websites`}
@@ -164,7 +167,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
             value={`${Math.round(stats.successRate)}%`}
             subtitle="Successful validations"
             icon={CheckCircle}
-            gradient="from-emerald-500 to-green-600"
+            gradient="from-emerald-500 to-emerald-600"
             badge={stats.successRate >= 95 ? "Excellent" : stats.successRate >= 85 ? "Good" : "Fair"}
             status={stats.successRate >= 95 ? "online" : stats.successRate >= 85 ? "checking" : "offline"}
             tooltip={`${Math.round(stats.successRate)}% of your validations were successful`}
@@ -175,7 +178,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
             value={`${stats.totalEarnings.toFixed(3)}`}
             subtitle="ETH earned"
             icon={Coins}
-            gradient="from-amber-500 to-orange-600"
+            gradient="from-blue-500 to-blue-600"
             trend={{ value: 12.5, label: "this month" }}
             badge={`$${(stats.totalEarnings * 2000).toFixed(2)} USD`}
             tooltip={`You've earned ${stats.totalEarnings.toFixed(4)} ETH from validations`}
@@ -186,7 +189,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
             value={`${stats.avgResponseTime}`}
             subtitle="ms average"
             icon={Zap}
-            gradient="from-blue-500 to-cyan-600"
+            gradient="from-cyan-500 to-cyan-600"
             badge={stats.avgResponseTime < 200 ? "Fast" : stats.avgResponseTime < 500 ? "Good" : "Slow"}
             status={stats.avgResponseTime < 200 ? "online" : stats.avgResponseTime < 500 ? "checking" : "offline"}
             tooltip={`Average response time across all your validations`}
@@ -201,7 +204,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
             value={stats.totalWebsites}
             subtitle="Being monitored"
             icon={Globe}
-            gradient="from-violet-500 to-purple-600"
+            gradient="from-blue-500 to-blue-600"
             trend={{ value: stats.weeklyGrowth, label: "this month" }}
             tooltip={`You have ${stats.totalWebsites} websites being monitored`}
             delay={0}
@@ -211,7 +214,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
             value={stats.onlineWebsites}
             subtitle={`${stats.totalWebsites - stats.onlineWebsites} offline`}
             icon={CheckCircle}
-            gradient="from-emerald-500 to-green-600"
+            gradient="from-emerald-500 to-emerald-600"
             badge={stats.onlineWebsites === stats.totalWebsites ? "Perfect" : "Healthy"}
             status={stats.onlineWebsites === stats.totalWebsites ? "online" : "checking"}
             tooltip={`${stats.onlineWebsites} out of ${stats.totalWebsites} websites are currently online`}
@@ -222,7 +225,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
             value={stats.totalPings.toLocaleString()}
             subtitle="Validation checks"
             icon={BarChart3}
-            gradient="from-blue-500 to-cyan-600"
+            gradient="from-cyan-500 to-cyan-600"
             trend={{ value: 15.6, label: "today" }}
             tooltip={`Total number of validation checks performed on your websites`}
             delay={200}
@@ -232,7 +235,7 @@ export function EnhancedStatsOverview({ websites = [], pings = [], user }) {
             value={`${Math.round(stats.successRate)}%`}
             subtitle="Availability score"
             icon={TrendingUp}
-            gradient="from-amber-500 to-orange-600"
+            gradient="from-blue-500 to-blue-600"
             badge={stats.successRate >= 99 ? "Excellent" : stats.successRate >= 95 ? "Good" : "Fair"}
             status={stats.successRate >= 99 ? "online" : stats.successRate >= 95 ? "checking" : "offline"}
             tooltip={`Overall uptime percentage across all your websites`}

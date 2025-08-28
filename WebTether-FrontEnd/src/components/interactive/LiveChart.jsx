@@ -55,7 +55,7 @@ export function LiveChart() {
             />
 
             {/* Latency indicator */}
-            <div className="w-1 bg-amber-500 rounded" style={{ height: `${(point.latency / maxLatency) * 40}px` }} />
+            <div className="w-1 bg-blue-500 rounded" style={{ height: `${(point.latency / maxLatency) * 40}px` }} />
           </motion.div>
         ))}
       </div>
@@ -67,7 +67,7 @@ export function LiveChart() {
           <span className="text-muted-foreground">Uptime %</span>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-amber-500 rounded" />
+          <div className="w-3 h-3 bg-blue-500 rounded" />
           <span className="text-muted-foreground">Latency</span>
         </div>
       </div>

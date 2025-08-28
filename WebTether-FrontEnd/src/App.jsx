@@ -1,56 +1,63 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React from "react"
+
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "./contexts/ThemeContext"
-import { AuthProvider, useAuth } from "./contexts/AuthContext"
+import { AuthProvider } from "./contexts/AuthContext"
 import { Toaster } from "./components/ui/sonner"
-import OnboardingFlow from "./components/onboarding/OnboardingFlow"
-import WebTetherLanding from "./pages/WebTetherLanding"
-import Dashboard from "./pages/Dashboard"
-import "./index.css"
-
-function AppContent() {
-  const { user, showOnboarding, completeOnboarding } = useAuth()
-  const [currentPage, setCurrentPage] = useState(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
-
-  // Listen for navigation changes
-  useEffect(() => {
-    const handlePopState = () => {
-      setCurrentPage(window.location.pathname === "/dashboard" ? "dashboard" : "landing")
-    }
-
-    window.addEventListener("popstate", handlePopState)
-    return () => window.removeEventListener("popstate", handlePopState)
-  }, [])
-
-  // Show onboarding for new validators
-  if (showOnboarding && user) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <OnboardingFlow onComplete={completeOnboarding} />
-      </div>
-    )
-  }
-
-  // Simple routing
-  const renderPage = () => {
-    switch (currentPage) {
-      case "dashboard":
-        return <Dashboard />
-      default:
-        return <WebTetherLanding />
-    }
-  }
-
-  return <div className="min-h-screen bg-background text-foreground">{renderPage()}</div>
-}
+import { Header } from "./components/layout/Header"
+import { Footer } from "./components/layout/Footer"
+import NewWebTetherLanding from "./pages/NewWebTetherLanding"
+import NewDashboard from "./pages/NewDashboard"
+import WalletPage from "./pages/WalletPage"
+import { toast } from "sonner"
+import "./App.css"
 
 function App() {
+  // Show welcome toast on app load
+  React.useEffect(() => {
+    const hasShownWelcome = localStorage.getItem("hasShownWelcome")
+    if (!hasShownWelcome) {
+      setTimeout(() => {
+        toast.success("Welcome to WebTether! 🎉", {
+          description: "The first monitoring service that pays you back.",
+          duration: 5000,
+        })
+        localStorage.setItem("hasShownWelcome", "true")
+      }, 1000)
+    }
+  }, [])
+
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="web-tether-theme">
+    <ThemeProvider>
       <AuthProvider>
-        <AppContent />
-        <Toaster />
+        <Router>
+          <div className="min-h-screen bg-background text-foreground">
+            <Routes>
+              <Route path="/" element={<NewWebTetherLanding />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <div className="min-h-screen">
+                    <NewDashboard />
+                  </div>
+                }
+              />
+              <Route
+                path="/wallet"
+                element={
+                  <div className="min-h-screen">
+                    <Header />
+                    <WalletPage />
+                    <Footer />
+                  </div>
+                }
+              />
+            </Routes>
+            <Toaster position="top-right" expand={true} richColors={true} closeButton={true} />
+          </div>
+        </Router>
       </AuthProvider>
     </ThemeProvider>
   )

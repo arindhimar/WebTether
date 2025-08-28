@@ -94,7 +94,7 @@ export default function WalletBalanceWidget() {
               Owner
             </Badge>
             {balance.pending > 0 && (
-              <Badge className="bg-amber-600/20 text-amber-400 border-amber-600/30 text-xs px-1.5 py-0.5">
+              <Badge className="bg-blue-600/20 text-blue-400 border-blue-600/30 text-xs px-1.5 py-0.5">
                 {showBalance ? balance.pending.toFixed(3) : "•••"} pending
               </Badge>
             )}

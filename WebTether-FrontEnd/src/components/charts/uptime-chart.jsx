@@ -40,8 +40,8 @@ export function UptimeChart({ data = [], title = "Uptime Overview", className })
   const getUptimeColor = (uptime) => {
     if (uptime >= 99) return "bg-emerald-500"
     if (uptime >= 95) return "bg-green-500"
-    if (uptime >= 90) return "bg-yellow-500"
-    if (uptime >= 80) return "bg-orange-500"
+    if (uptime >= 90) return "bg-blue-500"
+    if (uptime >= 80) return "bg-blue-500"
     return "bg-red-500"
   }
 
@@ -128,7 +128,7 @@ export function UptimeChart({ data = [], title = "Uptime Overview", className })
               <span>Good (95%+)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded-sm" />
+              <div className="w-3 h-3 bg-blue-500 rounded-sm" />
               <span>Fair (90%+)</span>
             </div>
             <div className="flex items-center gap-1">

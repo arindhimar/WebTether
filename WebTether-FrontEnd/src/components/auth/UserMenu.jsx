@@ -178,39 +178,46 @@ export function UserMenu({ onNavigate, currentView }) {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="relative h-10 w-10 rounded-full border-2 border-primary/20 bg-transparent hover:bg-accent hover:text-accent-foreground"
+            className="relative h-10 w-10 rounded-full border-2 border-blue-200 dark:border-blue-800 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-300"
           >
             <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+              <AvatarFallback className="bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 font-semibold">
                 {getInitials(user?.name || user?.email || "U")}
               </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-80 bg-popover border-border text-popover-foreground" align="end" forceMount>
+        <DropdownMenuContent
+          className="w-80 bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 text-slate-900 dark:text-slate-100"
+          align="end"
+          forceMount
+        >
           <DropdownMenuLabel className="font-normal p-4">
             <div className="flex flex-col space-y-3">
               <div className="flex items-center space-x-3">
-                <Avatar className="h-12 w-12 border-2 border-primary/20">
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                <Avatar className="h-12 w-12 border-2 border-blue-200 dark:border-blue-800">
+                  <AvatarFallback className="bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 font-semibold">
                     {getInitials(user?.name || user?.email || "U")}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold leading-none truncate text-popover-foreground">
+                  <p className="text-sm font-semibold leading-none truncate text-slate-900 dark:text-slate-100">
                     {user?.name || "User"}
                   </p>
-                  <p className="text-xs leading-none text-muted-foreground mt-1 truncate">{user?.email}</p>
+                  <p className="text-xs leading-none text-slate-500 dark:text-slate-400 mt-1 truncate">{user?.email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs bg-secondary text-secondary-foreground">
+                <Badge
+                  variant="secondary"
+                  className="text-xs bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300"
+                >
                   {user?.isVisitor ? "Validator" : "Owner"}
                 </Badge>
               </div>
             </div>
           </DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-border" />
+          <DropdownMenuSeparator className="bg-blue-200 dark:bg-blue-800" />
 
           {/* Navigation Items */}
           {menuItems
@@ -219,31 +226,31 @@ export function UserMenu({ onNavigate, currentView }) {
               <DropdownMenuItem
                 key={item.key}
                 onClick={() => onNavigate(item.key)}
-                className={`cursor-pointer p-3 transition-colors text-popover-foreground ${
+                className={`cursor-pointer p-3 transition-colors text-slate-900 dark:text-slate-100 ${
                   currentView === item.key
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300"
+                    : "hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-300"
                 }`}
               >
                 <item.icon className="mr-3 h-4 w-4" />
                 <div className="flex flex-col">
                   <span className="font-medium text-sm">{item.label}</span>
-                  <span className="text-xs text-muted-foreground">{item.description}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{item.description}</span>
                 </div>
               </DropdownMenuItem>
             ))}
 
-          <DropdownMenuSeparator className="bg-border" />
+          <DropdownMenuSeparator className="bg-blue-200 dark:bg-blue-800" />
 
           {/* Profile & Logout */}
           <DropdownMenuItem
             onClick={() => setProfileOpen(true)}
-            className="cursor-pointer p-3 hover:bg-accent hover:text-accent-foreground text-popover-foreground"
+            className="cursor-pointer p-3 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-300 text-slate-900 dark:text-slate-100"
           >
             <User className="mr-3 h-4 w-4" />
             <div className="flex flex-col">
               <span className="font-medium text-sm">Edit Profile</span>
-              <span className="text-xs text-muted-foreground">Update your account details</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Update your account details</span>
             </div>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -258,16 +265,18 @@ export function UserMenu({ onNavigate, currentView }) {
 
       {/* Profile Dialog */}
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-        <DialogContent className="sm:max-w-[480px] p-0 gap-0 bg-background border-border">
-          <Card className="border-0 shadow-none bg-card">
+        <DialogContent className="sm:max-w-[480px] p-0 gap-0 bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800">
+          <Card className="border-0 shadow-none bg-white dark:bg-slate-900">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950/20">
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl text-card-foreground">Edit Profile</CardTitle>
-                  <CardDescription className="text-muted-foreground">Update your account information</CardDescription>
+                  <CardTitle className="text-xl text-slate-900 dark:text-slate-100">Edit Profile</CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Update your account information
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -284,7 +293,7 @@ export function UserMenu({ onNavigate, currentView }) {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="profile-name" className="text-sm font-medium text-foreground">
+                  <Label htmlFor="profile-name" className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     Full Name
                   </Label>
                   <Input
@@ -292,7 +301,7 @@ export function UserMenu({ onNavigate, currentView }) {
                     value={profileData.name}
                     onChange={(e) => handleInputChange("name", e.target.value)}
                     disabled={isLoading}
-                    className={`h-11 bg-background text-foreground border-border placeholder:text-muted-foreground ${errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                    className={`h-11 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-blue-200 dark:border-blue-800 placeholder:text-slate-500 dark:placeholder:text-slate-400 ${errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     placeholder="Enter your full name"
                   />
                   {errors.name && (
@@ -303,7 +312,7 @@ export function UserMenu({ onNavigate, currentView }) {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="profile-email" className="text-sm font-medium text-foreground">
+                  <Label htmlFor="profile-email" className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     Email Address
                   </Label>
                   <Input
@@ -312,7 +321,7 @@ export function UserMenu({ onNavigate, currentView }) {
                     value={profileData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     disabled={isLoading}
-                    className={`h-11 bg-background text-foreground border-border placeholder:text-muted-foreground ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                    className={`h-11 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-blue-200 dark:border-blue-800 placeholder:text-slate-500 dark:placeholder:text-slate-400 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     placeholder="Enter your email address"
                   />
                   {errors.email && (
@@ -324,19 +333,19 @@ export function UserMenu({ onNavigate, currentView }) {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <div className="flex justify-end gap-3 pt-4 border-t border-blue-200 dark:border-blue-800">
                 <Button
                   variant="outline"
                   onClick={() => setProfileOpen(false)}
                   disabled={isLoading}
-                  className="bg-transparent border-border text-foreground hover:bg-accent hover:text-accent-foreground"
+                  className="bg-transparent border-blue-200 dark:border-blue-800 text-slate-900 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-300"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleProfileSave}
                   disabled={isLoading}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
                 >
                   {isLoading ? (
                     <>

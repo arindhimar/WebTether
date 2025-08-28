@@ -83,7 +83,7 @@ export default function PingQueue({ pings = [], websites = [], userId, onPingAcc
                 {recentPings.map((ping, index) => (
                   <div
                     key={ping.pid || index}
-                    className="flex items-center justify-between p-4 rounded-2xl border border-border/50 bg-gradient-to-r from-background to-muted/20 hover:shadow-md transition-all duration-200"
+                    className="flex items-center justify-between p-4 rounded-2xl border border-border/50 bg-gradient-to-r text-blue-600 dark:text-blue-400 hover:shadow-md transition-all duration-200"
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <div className="flex-shrink-0">{getStatusIcon(ping.is_up)}</div>

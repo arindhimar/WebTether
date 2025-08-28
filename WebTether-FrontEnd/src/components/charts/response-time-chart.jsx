@@ -39,8 +39,8 @@ export function ResponseTimeChart({ data = [], title = "Response Time", classNam
   const getResponseTimeColor = (responseTime) => {
     if (responseTime <= 100) return "bg-emerald-500"
     if (responseTime <= 200) return "bg-green-500"
-    if (responseTime <= 500) return "bg-yellow-500"
-    if (responseTime <= 1000) return "bg-orange-500"
+    if (responseTime <= 500) return "bg-blue-500"
+    if (responseTime <= 1000) return "bg-blue-500"
     return "bg-red-500"
   }
 
@@ -152,12 +152,16 @@ export function ResponseTimeChart({ data = [], title = "Response Time", classNam
               <span>Fast (&lt;100ms)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded-sm" />
+              <div className="w-3 h-3 bg-blue-500 rounded-sm" />
               <span>Average (100-500ms)</span>
             </div>
             <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-blue-500 rounded-sm" />
+              <span>Slow (500-1000ms)</span>
+            </div>
+            <div className="flex items-center gap-1">
               <div className="w-3 h-3 bg-red-500 rounded-sm" />
-              <span>Slow (&gt;500ms)</span>
+              <span>Very Slow (&gt;1000ms)</span>
             </div>
           </div>
         </div>
@@ -165,3 +169,4 @@ export function ResponseTimeChart({ data = [], title = "Response Time", classNam
     </Card>
   )
 }
+  

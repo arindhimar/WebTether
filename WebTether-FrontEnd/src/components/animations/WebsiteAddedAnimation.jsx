@@ -193,7 +193,7 @@ export function WebsiteAddedAnimation({ websiteUrl, onComplete }) {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-8 p-6 bg-muted/30 rounded-xl border border-border/50"
+                  className="mb-8 p-6 text-blue-600 dark:text-blue-400 rounded-xl border border-border/50"
                 >
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-violet-600" />
