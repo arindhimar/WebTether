@@ -208,3 +208,5 @@ export function PingAnimation({ open, onOpenChange, siteUrl }) {
     </AnimatePresence>
   )
 }
+
+export default PingAnimation

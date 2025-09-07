@@ -230,7 +230,9 @@ def get_available_sites():
         return jsonify({"error": "Missing or invalid Authorization header"}), 401
 
     token = auth.split(" ", 1)[1]
+    
     claims = decode_token(token)
+    
     if not claims:
         return jsonify({"error": "Invalid or expired token"}), 401
 
@@ -239,7 +241,7 @@ def get_available_sites():
         return jsonify({"error": "Invalid user id in token"}), 400
 
     try:
-        resp = website_model.get_available_sites_for_user(uid)
+        resp = website_model.get_websites_excluding_user(uid)
         return jsonify(_unwrap_supabase_response(resp)), 200
     except Exception as e:
         return jsonify({"error": f"Failed to fetch available sites: {str(e)}"}), 500

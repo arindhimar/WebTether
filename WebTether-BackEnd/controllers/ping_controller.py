@@ -126,6 +126,7 @@ def create_ping():
     """
     try:
         data = request.get_json(silent=True) or {}
+        
         resp = ping_model.create_ping(
             wid=data.get("wid"),
             is_up=data.get("is_up"),
@@ -193,16 +194,120 @@ def delete_ping(pid):
 # -------------------------
 # Manual ping (simulate Hardhat transaction codes or accept real txs)
 # -------------------------
+# @ping_controller.route('/manual', methods=['POST'])
+# def manual_ping():
+#     """
+#     Manual ping flow for a user:
+#       - JWT required (Bearer token)
+#       - body: { wid, url, tx_hash } where tx_hash may be a FAKE_TX_CODE for local testing
+#       - validates tx uniqueness -> simulates transaction (for Hardhat demo)
+#       - uses user's agent_url to actually ping the URL
+#       - writes ping record and onchain transaction record
+#     """
+#     try:
+#         auth = request.headers.get("Authorization", "")
+#         if not auth.startswith("Bearer "):
+#             return jsonify({"error": "Missing or invalid Authorization header"}), 401
+
+#         token = auth.split(" ", 1)[1]
+#         claims = decode_token(token)
+        
+#         if not claims:
+#             return jsonify({"error": "Invalid or expired token"}), 401
+
+#         uid = _extract_user_id_from_claims(claims)
+        
+#         if uid is None:
+#             return jsonify({"error": "Invalid user id in token"}), 400
+
+#         data = request.get_json(silent=True) or {}
+#         wid = data.get("wid")
+#         url = data.get("url")
+#         tx_hash = data.get("tx_hash")
+
+#         if not (wid and url and tx_hash):
+#             return jsonify({"error": "wid, url and tx_hash are required"}), 400
+
+#         # get user row
+#         user_row = _single_record_from_response(user_model.get_user_by_id(uid))
+#         if not user_row:
+#             return jsonify({"error": "User not found"}), 404
+
+#         # check tx uniqueness
+#         existing_tx = _single_record_from_response(tx_model.get_transaction_by_hash(tx_hash))
+#         if existing_tx:
+#             return jsonify({"error": "Transaction code already used", "tx_hash": tx_hash}), 409
+
+#         # simulate or verify transaction
+#         used_amount_eth = None
+#         gas_used = None
+#         if tx_hash in FAKE_TX_CODES:
+#             simulated_tx = simulate_hardhat_transaction(tx_hash)
+#             if not simulated_tx:
+#                 return jsonify({"error": "Failed to simulate transaction"}), 500
+#             used_amount_eth = PING_COST_ETH
+#             gas_used = simulated_tx["gas_used"]
+#         else:
+#             # Running in local demo mode only; real verification not supported here unless you add w3 checks.
+#             return jsonify({"error": "Only simulated tx codes are supported in local mode"}), 400
+
+#         # call user's agent/worker to perform the actual ping
+#         agent_url = user_row.get("agent_url")
+#         if not agent_url:
+#             return jsonify({"error": "No agent_url configured for user"}), 400
+
+#         try:
+#             resp = requests.post(agent_url, json={"url": url}, timeout=20)
+#             resp.raise_for_status()
+#             result = resp.json()
+#         except Exception as e:
+#             return jsonify({"error": f"Worker error: {str(e)}"}), 502
+
+#         # store ping
+#         ping_resp = ping_model.create_ping(
+#             wid=wid,
+#             is_up=result.get("is_up", False),
+#             latency_ms=result.get("latency_ms"),
+#             region=result.get("region"),
+#             uid=uid,
+#             tx_hash=tx_hash,
+#             fee_paid_numeric=used_amount_eth,
+#             source="manual",
+#             checked_by_uid=uid
+#         )
+#         ping_row = _single_record_from_response(ping_resp)
+#         if not ping_row:
+#             return jsonify({"error": "Failed to save ping"}), 500
+
+#         # log the simulated tx
+#         tx_model.create_transaction(
+#             tx_hash=tx_hash,
+#             uid=uid,
+#             pid=ping_row.get("pid"),
+#             token_address="ETH",
+#             token_amount=used_amount_eth,
+#             gas_used=gas_used
+#         )
+
+#         return jsonify({
+#             "status": "recorded",
+#             "ping": ping_row,
+#             "onchain": {
+#                 "tx_hash": tx_hash,
+#                 "amount": used_amount_eth,
+#                 "gas_used": gas_used,
+#                 "simulated": True
+#             },
+#             "result": result
+#         }), 200
+
+#     except Exception as e:
+#         tb = traceback.format_exc()
+#         return jsonify({"error": "Internal server error", "detail": str(e), "trace": tb}), 500
+
+
 @ping_controller.route('/manual', methods=['POST'])
 def manual_ping():
-    """
-    Manual ping flow for a user:
-      - JWT required (Bearer token)
-      - body: { wid, url, tx_hash } where tx_hash may be a FAKE_TX_CODE for local testing
-      - validates tx uniqueness -> simulates transaction (for Hardhat demo)
-      - uses user's agent_url to actually ping the URL
-      - writes ping record and onchain transaction record
-    """
     try:
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
@@ -210,6 +315,7 @@ def manual_ping():
 
         token = auth.split(" ", 1)[1]
         claims = decode_token(token)
+        
         if not claims:
             return jsonify({"error": "Invalid or expired token"}), 401
 
@@ -221,22 +327,22 @@ def manual_ping():
         data = request.get_json(silent=True) or {}
         wid = data.get("wid")
         url = data.get("url")
-        tx_hash = data.get("tx_hash")
+        tx_hash = data.get("tx_hash")  # Changed from txHash to tx_hash
 
         if not (wid and url and tx_hash):
             return jsonify({"error": "wid, url and tx_hash are required"}), 400
 
-        # get user row
+        # Get user row
         user_row = _single_record_from_response(user_model.get_user_by_id(uid))
         if not user_row:
             return jsonify({"error": "User not found"}), 404
 
-        # check tx uniqueness
+        # Check tx uniqueness
         existing_tx = _single_record_from_response(tx_model.get_transaction_by_hash(tx_hash))
         if existing_tx:
             return jsonify({"error": "Transaction code already used", "tx_hash": tx_hash}), 409
 
-        # simulate or verify transaction
+        # Simulate or verify transaction
         used_amount_eth = None
         gas_used = None
         if tx_hash in FAKE_TX_CODES:
@@ -246,27 +352,38 @@ def manual_ping():
             used_amount_eth = PING_COST_ETH
             gas_used = simulated_tx["gas_used"]
         else:
-            # Running in local demo mode only; real verification not supported here unless you add w3 checks.
+            # For real transactions (not implemented in this demo)
             return jsonify({"error": "Only simulated tx codes are supported in local mode"}), 400
 
-        # call user's agent/worker to perform the actual ping
-        agent_url = user_row.get("agent_url")
-        if not agent_url:
-            return jsonify({"error": "No agent_url configured for user"}), 400
-
+        # Use Cloudflare Worker to perform the actual ping
         try:
-            resp = requests.post(agent_url, json={"url": url}, timeout=20)
+            worker_url = "https://your-worker.url.workers.dev/"  # Replace with your actual worker URL
+            resp = requests.post(worker_url, json={"url": url}, timeout=20)
             resp.raise_for_status()
             result = resp.json()
         except Exception as e:
-            return jsonify({"error": f"Worker error: {str(e)}"}), 502
+            # Fallback to simple ping if worker fails
+            start_time = time.time()
+            try:
+                ping_resp = requests.head(url, timeout=10)
+                is_up = ping_resp.status_code < 400
+            except:
+                is_up = False
+            latency_ms = int((time.time() - start_time) * 1000) if is_up else None
+            
+            result = {
+                "is_up": is_up,
+                "latency_ms": latency_ms,
+                "region": "unknown",
+                "checked_url": url
+            }
 
-        # store ping
+        # Store ping
         ping_resp = ping_model.create_ping(
             wid=wid,
             is_up=result.get("is_up", False),
             latency_ms=result.get("latency_ms"),
-            region=result.get("region"),
+            region=result.get("region", "unknown"),
             uid=uid,
             tx_hash=tx_hash,
             fee_paid_numeric=used_amount_eth,
@@ -277,7 +394,7 @@ def manual_ping():
         if not ping_row:
             return jsonify({"error": "Failed to save ping"}), 500
 
-        # log the simulated tx
+        # Log the simulated tx
         tx_model.create_transaction(
             tx_hash=tx_hash,
             uid=uid,
@@ -301,8 +418,8 @@ def manual_ping():
 
     except Exception as e:
         tb = traceback.format_exc()
-        return jsonify({"error": "Internal server error", "detail": str(e), "trace": tb}), 500
-
+        print(f"Error in manual ping: {str(e)}\n{tb}")
+        return jsonify({"error": "Internal server error", "detail": str(e)}), 500
 
 # -------------------------
 # Wallet (simulated) endpoints
@@ -319,7 +436,9 @@ def get_wallet_balance():
             return jsonify({"error": "Missing or invalid Authorization header"}), 401
 
         token = auth.split(" ", 1)[1]
+        print(token)
         claims = decode_token(token)
+        
         if not claims:
             return jsonify({"error": "Invalid or expired token"}), 401
 
@@ -418,6 +537,9 @@ def get_user_pings(uid):
 
         token = auth.split(" ", 1)[1]
         claims = decode_token(token)
+        
+        print(claims)
+        
         if not claims:
             return jsonify({"error": "Invalid or expired token"}), 401
 

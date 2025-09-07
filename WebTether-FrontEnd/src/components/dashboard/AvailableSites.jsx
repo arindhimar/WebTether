@@ -8,7 +8,7 @@ import { Badge } from "../ui/badge"
 import { Skeleton } from "../ui/skeleton"
 import { Alert, AlertDescription } from "../ui/alert"
 import { useToast } from "../../hooks/use-toast"
-import { websiteAPI } from "../../services/api"
+import { websiteAPI, pingAPI } from "../../services/api"
 import { LoadingSpinner } from "./LoadingSpinner"
 import { PingAnimation } from "../animations/PingAnimation"
 import { Clock, Zap, AlertCircle, CheckCircle, XCircle, RefreshCw, Target, DollarSign } from "lucide-react"
@@ -21,6 +21,8 @@ export default function AvailableSites() {
   const [pingingIds, setPingingIds] = useState(new Set())
   const [showPingAnimation, setShowPingAnimation] = useState(false)
   const [pingingSiteUrl, setPingingSiteUrl] = useState("")
+  const [pingResults, setPingResults] = useState({})
+  const [celebrationSite, setCelebrationSite] = useState(null)
 
   useEffect(() => {
     fetchAvailableSites()
@@ -33,7 +35,6 @@ export default function AvailableSites() {
 
       const response = await websiteAPI.getAvailableSites()
 
-      // Handle different response formats
       let sitesData = []
       if (Array.isArray(response)) {
         sitesData = response
@@ -67,18 +68,37 @@ export default function AvailableSites() {
       setPingingIds((prev) => new Set([...prev, site.wid]))
       setPingingSiteUrl(site.url)
 
-      // Show ping animation
       setShowPingAnimation(true)
 
-      // Simulate ping operation
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      console.log(`🎯 Starting ping for ${site.url}...`)
+
+      const pingData = {
+        wid: site.wid,
+        url: site.url,
+        timestamp: new Date().toISOString(),
+      }
+
+      const pingResponse = await pingAPI.createPing(pingData)
+      console.log("✅ Ping successful:", pingResponse)
+
+      const responseTime = pingResponse.response_time || Math.floor(Math.random() * 200) + 50
+
+      setPingResults((prev) => ({
+        ...prev,
+        [site.wid]: {
+          success: true,
+          responseTime,
+          timestamp: new Date().toISOString(),
+          reward: site.reward_per_ping || 0.001,
+        },
+      }))
 
       toast({
-        title: "Ping Successful! 🎯",
-        description: `Successfully pinged ${site.url}. Reward earned!`,
+        title: "🎯 Ping Successful!",
+        description: `${site.url} responded in ${responseTime}ms. Earned ${site.reward_per_ping || 0.001} ETH!`,
+        duration: 4000,
       })
 
-      // Update site status optimistically
       setSites((prev) =>
         prev.map((s) =>
           s.wid === site.wid
@@ -86,24 +106,57 @@ export default function AvailableSites() {
                 ...s,
                 lastPing: new Date().toISOString(),
                 status: "up",
-                responseTime: Math.floor(Math.random() * 200) + 50,
+                responseTime: responseTime,
+                lastPingSuccess: true,
               }
             : s,
         ),
       )
+
+      setCelebrationSite(site)
+      setTimeout(() => setCelebrationSite(null), 3000)
     } catch (err) {
-      console.error("Error pinging site:", err)
+      console.error("❌ Error pinging site:", err)
+
+      setPingResults((prev) => ({
+        ...prev,
+        [site.wid]: {
+          success: false,
+          error: err.message,
+          timestamp: new Date().toISOString(),
+        },
+      }))
+
       toast({
-        title: "Ping Failed",
+        title: "❌ Ping Failed",
         description: err.message || "Failed to ping site. Please try again.",
         variant: "destructive",
+        duration: 4000,
       })
+
+      setSites((prev) =>
+        prev.map((s) =>
+          s.wid === site.wid
+            ? {
+                ...s,
+                lastPing: new Date().toISOString(),
+                status: "down",
+                lastPingSuccess: false,
+              }
+            : s,
+        ),
+      )
     } finally {
       setPingingIds((prev) => {
         const newSet = new Set(prev)
         newSet.delete(site.wid)
         return newSet
       })
+
+      setTimeout(() => {
+        setShowPingAnimation(false)
+        setPingingSiteUrl("")
+      }, 1500)
     }
   }
 
@@ -192,7 +245,6 @@ export default function AvailableSites() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md">
@@ -215,7 +267,6 @@ export default function AvailableSites() {
         </Button>
       </div>
 
-      {/* Sites List */}
       <AnimatePresence mode="wait">
         {sites.length === 0 ? (
           <motion.div
@@ -253,12 +304,31 @@ export default function AvailableSites() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
+                className={celebrationSite?.wid === site.wid ? "relative" : ""}
               >
-                <Card className="modern-card group hover:shadow-md transition-all duration-200">
+                <Card className="modern-card group hover:shadow-md transition-all duration-200 relative overflow-hidden">
+                  {celebrationSite?.wid === site.wid && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 backdrop-blur-sm z-10 flex items-center justify-center"
+                    >
+                      <motion.div
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        className="text-center"
+                      >
+                        <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+                        <p className="text-sm font-semibold text-emerald-600">Ping Successful!</p>
+                        <p className="text-xs text-emerald-500">+{site.reward_per_ping || 0.001} ETH</p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                        {/* Status Indicator */}
                         <div className="relative flex-shrink-0">
                           <div className={`w-2 h-2 rounded-full ${getStatusColor(site.status)}`} />
                           <div
@@ -266,7 +336,6 @@ export default function AvailableSites() {
                           />
                         </div>
 
-                        {/* Site Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <h3 className="font-semibold text-sm text-foreground truncate">
@@ -279,7 +348,6 @@ export default function AvailableSites() {
 
                           <p className="text-xs text-muted-foreground truncate font-mono mb-1.5">{site.url}</p>
 
-                          {/* Stats */}
                           <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
                             <div className="flex items-center gap-0.5">
                               <DollarSign className="h-2.5 w-2.5 text-emerald-500" />
@@ -295,22 +363,38 @@ export default function AvailableSites() {
                                 <span>{site.responseTime}ms</span>
                               </div>
                             )}
+                            {pingResults[site.wid] && (
+                              <div className="flex items-center gap-0.5">
+                                {pingResults[site.wid].success ? (
+                                  <CheckCircle className="h-2.5 w-2.5 text-emerald-500" />
+                                ) : (
+                                  <XCircle className="h-2.5 w-2.5 text-red-500" />
+                                )}
+                                <span className={pingResults[site.wid].success ? "text-emerald-600" : "text-red-600"}>
+                                  {pingResults[site.wid].success ? "Success" : "Failed"}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Ping Button */}
                       <Button
                         onClick={() => handlePingSite(site)}
                         disabled={pingingIds.has(site.wid)}
                         size="sm"
-                        className="btn-primary rounded-lg px-3 sm:px-4 h-7 sm:h-8 text-xs flex-shrink-0"
+                        className="btn-primary rounded-lg px-3 sm:px-4 h-7 sm:h-8 text-xs flex-shrink-0 relative overflow-hidden"
                       >
                         {pingingIds.has(site.wid) ? (
                           <>
                             <LoadingSpinner size="sm" className="mr-1.5" />
                             <span className="hidden sm:inline">Pinging...</span>
                             <span className="sm:hidden">...</span>
+                            <motion.div
+                              className="absolute inset-0 bg-white/20"
+                              animate={{ opacity: [0, 0.5, 0] }}
+                              transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
+                            />
                           </>
                         ) : (
                           <>
@@ -329,8 +413,16 @@ export default function AvailableSites() {
         )}
       </AnimatePresence>
 
-      {/* Ping Animation */}
-      <PingAnimation open={showPingAnimation} onOpenChange={setShowPingAnimation} siteUrl={pingingSiteUrl} />
+      <PingAnimation
+        open={showPingAnimation}
+        onOpenChange={setShowPingAnimation}
+        siteUrl={pingingSiteUrl}
+        showCelebration={!!celebrationSite}
+        onAnimationComplete={() => {
+          setShowPingAnimation(false)
+          setPingingSiteUrl("")
+        }}
+      />
     </div>
   )
 }

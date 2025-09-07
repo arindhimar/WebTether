@@ -9,7 +9,7 @@ import { Toaster } from "./components/ui/sonner"
 import { Header } from "./components/layout/Header"
 import { Footer } from "./components/layout/Footer"
 import NewWebTetherLanding from "./pages/NewWebTetherLanding"
-import NewDashboard from "./pages/NewDashboard"
+import ModernDashboard from "./pages/ModernDashboard.jsx"
 import WalletPage from "./pages/WalletPage"
 import { toast } from "sonner"
 import "./App.css"
@@ -40,7 +40,7 @@ function App() {
                 path="/dashboard"
                 element={
                   <div className="min-h-screen">
-                    <NewDashboard />
+                    <ModernDashboard />
                   </div>
                 }
               />

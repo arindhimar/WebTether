@@ -8,6 +8,8 @@ import { Label } from "../ui/label"
 import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../hooks/use-toast"
 import { LoadingSpinner } from "./LoadingSpinner"
+import { PingAnimation } from "../animations/PingAnimation"
+import { userAPI } from "../../services/api"
 import {
   Save,
   CheckCircle,
@@ -18,7 +20,7 @@ import {
   Server,
   Globe,
   ChevronRight,
-  Play,
+  Target,
 } from "lucide-react"
 import { validateCloudflareWorkerUrl, isCloudflareWorkerConfigured } from "../../utils/cloudflareAgent"
 
@@ -32,6 +34,11 @@ export default function UserSettings() {
     agentDescription: "",
   })
 
+  const [validatorData, setValidatorData] = useState(null)
+  const [isLoadingValidator, setIsLoadingValidator] = useState(true)
+  const [showPingAnimation, setShowPingAnimation] = useState(false)
+  const [isPinging, setIsPinging] = useState(false)
+
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [urlValidation, setUrlValidation] = useState({ isValid: true, error: "" })
@@ -44,8 +51,23 @@ export default function UserSettings() {
         agentName: user.agent_name || "",
         agentDescription: user.agent_description || "",
       })
+      fetchValidatorData()
     }
   }, [user])
+
+  const fetchValidatorData = async () => {
+    if (!user?.uid) return
+
+    try {
+      setIsLoadingValidator(true)
+      const response = await userAPI.getUser(user.uid)
+      setValidatorData(response)
+    } catch (error) {
+      console.error("Error fetching validator data:", error)
+    } finally {
+      setIsLoadingValidator(false)
+    }
+  }
 
   const handleInputChange = (field, value) => {
     setSettings((prev) => ({
@@ -94,6 +116,50 @@ export default function UserSettings() {
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handlePingTest = async () => {
+    if (!settings.agentUrl || isPinging) return
+
+    const validation = validateCloudflareWorkerUrl(settings.agentUrl)
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid URL",
+        description: validation.error,
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setIsPinging(true)
+      setShowPingAnimation(true)
+
+      const response = await fetch(`${settings.agentUrl}/health`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Ping Successful! 🎯",
+          description: "Your Cloudflare Worker is responding correctly.",
+        })
+      } else {
+        throw new Error(`Worker responded with status: ${response.status}`)
+      }
+    } catch (error) {
+      console.error("Ping test failed:", error)
+      toast({
+        title: "Ping Failed",
+        description: "Could not reach your Cloudflare Worker. Check the URL and deployment.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsPinging(false)
     }
   }
 
@@ -235,6 +301,36 @@ export default {
           </p>
         </div>
 
+        {/* Validator Stats Card */}
+        {!isLoadingValidator && validatorData && (
+          <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-slate-900 dark:text-white">
+                <Target className="h-5 w-5 text-blue-600" />
+                Validator Stats
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{validatorData.total_pings || 0}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-300">Total Pings</div>
+              </div>
+              <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
+                <div className="text-2xl font-bold text-emerald-600">{validatorData.total_earnings || 0}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-300">ETH Earned</div>
+              </div>
+              <div className="text-center p-3 bg-violet-50 dark:bg-violet-950/20 rounded-lg">
+                <div className="text-2xl font-bold text-violet-600">{validatorData.success_rate || 0}%</div>
+                <div className="text-xs text-slate-600 dark:text-slate-300">Success Rate</div>
+              </div>
+              <div className="text-center p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                <div className="text-2xl font-bold text-amber-600">{validatorData.avg_response_time || 0}ms</div>
+                <div className="text-xs text-slate-600 dark:text-slate-300">Avg Response</div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Status Card */}
         <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardContent className="p-4 sm:p-6">
@@ -243,7 +339,7 @@ export default {
                 <div className="flex-shrink-0">
                   <CheckCircle className="h-5 w-5 text-emerald-600" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="font-semibold text-emerald-800 dark:text-emerald-200 text-sm sm:text-base">
                     Validator Active
                   </h3>
@@ -251,6 +347,24 @@ export default {
                     Your worker is configured and earning ETH
                   </p>
                 </div>
+                <Button
+                  onClick={handlePingTest}
+                  disabled={isPinging}
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {isPinging ? (
+                    <>
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Pinging...
+                    </>
+                  ) : (
+                    <>
+                      <Target className="h-4 w-4 mr-2" />
+                      Ping Test
+                    </>
+                  )}
+                </Button>
               </div>
             ) : (
               <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800">
@@ -283,13 +397,24 @@ export default {
               <Label htmlFor="agentUrl" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Worker URL *
               </Label>
-              <Input
-                id="agentUrl"
-                value={settings.agentUrl}
-                onChange={(e) => handleInputChange("agentUrl", e.target.value)}
-                placeholder="https://your-worker.workers.dev"
-                className={`h-12 text-base ${!urlValidation.isValid ? "border-red-500" : ""}`}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="agentUrl"
+                  value={settings.agentUrl}
+                  onChange={(e) => handleInputChange("agentUrl", e.target.value)}
+                  placeholder="https://your-worker.workers.dev"
+                  className={`h-12 text-base flex-1 ${!urlValidation.isValid ? "border-red-500" : ""}`}
+                />
+                <Button
+                  onClick={handlePingTest}
+                  disabled={isPinging || !settings.agentUrl || !urlValidation.isValid}
+                  size="sm"
+                  variant="outline"
+                  className="h-12 px-4 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
+                >
+                  {isPinging ? <LoadingSpinner size="sm" /> : <Target className="h-4 w-4" />}
+                </Button>
+              </div>
               {!urlValidation.isValid && <p className="text-sm text-red-600">{urlValidation.error}</p>}
             </div>
 
@@ -345,7 +470,7 @@ export default {
         <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-slate-900 dark:text-white">
-              <Play className="h-5 w-5 text-emerald-600" />
+              <Target className="h-5 w-5 text-emerald-600" />
               Quick Setup
             </CardTitle>
           </CardHeader>
@@ -496,6 +621,9 @@ export default {
           ))}
         </div>
       </div>
+
+      {/* Ping Animation Component */}
+      <PingAnimation open={showPingAnimation} onOpenChange={setShowPingAnimation} siteUrl={settings.agentUrl} />
     </div>
   )
 }

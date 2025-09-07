@@ -322,3 +322,5 @@ export function WebsiteAddedAnimation({ websiteUrl, onComplete }) {
     document.body,
   )
 }
+
+export default WebsiteAddedAnimation

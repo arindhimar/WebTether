@@ -46,6 +46,9 @@ class ApiService {
       console.log(`API Response: ${response.status}`, responseData)
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Invalid or expired token")
+        }
         throw new Error(responseData.error || `HTTP error! status: ${response.status}`)
       }
 
@@ -68,6 +71,12 @@ class ApiService {
     return this.request("/auth/signup", {
       method: "POST",
       body: JSON.stringify(signupData),
+    })
+  }
+
+  async logout() {
+    return this.request("/auth/logout", {
+      method: "POST",
     })
   }
 
@@ -125,7 +134,6 @@ class ApiService {
       method: "DELETE",
     })
   }
-
 
   async getUserWebsites(uid) {
     return this.request(`/websites/user/${uid}`)
@@ -243,7 +251,7 @@ export const websiteAPI = {
   getAllWebsites: () => api.getWebsites(),
   getWebsite: (wid) => api.getWebsite(wid),
   getAvailableSites: () => api.getAvailableSites(),
-  createWebsite: (websiteData) => api.createWebsite(websiteData), 
+  createWebsite: (websiteData) => api.createWebsite(websiteData),
   updateWebsite: (wid, data) => api.updateWebsite(wid, data),
   deleteWebsite: (wid) => api.deleteWebsite(wid),
   getUserWebsites: (uid) => api.getUserWebsites(uid),
@@ -259,6 +267,7 @@ export const userAPI = {
 export const authAPI = {
   login: (email, password) => api.login(email, password),
   signup: (data) => api.signup(data),
+  logout: () => api.logout(),
 }
 
 export const walletAPI = {
@@ -275,5 +284,3 @@ export const transactionAPI = {
   updateTransaction: (txHash, data) => api.updateTransaction(txHash, data),
   deleteTransaction: (txHash) => api.deleteTransaction(txHash),
 }
-
-

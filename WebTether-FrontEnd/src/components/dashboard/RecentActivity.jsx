@@ -3,227 +3,187 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"
-import { Activity, CheckCircle, XCircle } from "lucide-react"
+import { Activity, CheckCircle, XCircle, Clock, Zap, DollarSign } from "lucide-react"
 
 export default function RecentActivity({ websites = [], pings = [], user }) {
   const [activities, setActivities] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
-  console.log("RecentActivity - Props received:", {
-    websites: websites.length,
-    pings: pings.length,
-    user: user?.id,
-    isVisitor: user?.isVisitor,
-    pingsData: pings.slice(0, 2), // Show first 2 for debugging
-  })
-
   useEffect(() => {
-    if (user && (websites.length > 0 || pings.length > 0)) {
+    // Only generate activities if we have the necessary data
+    if ((websites.length > 0 || pings.length > 0) && user && user.id) {
       generateActivities()
+    } else {
+      setIsLoading(false)
+      setActivities([])
     }
   }, [websites, pings, user])
 
   const generateActivities = () => {
-    console.log("RecentActivity - Starting to generate activities...")
     setIsLoading(true)
-
+    
     try {
       let userActivities = []
-
-      if (user?.isVisitor) {
-        console.log("RecentActivity - Processing validator activities...")
-        // Validator activities - show recent pings they performed
-        const userPings = pings
-          .filter((ping) => {
-            const matches = ping.checked_by_uid === user.id
-            console.log(
-              `RecentActivity - Ping ${ping.pid}: checked_by_uid=${ping.checked_by_uid} vs user.id=${user.id} = ${matches}`,
-            )
-            return matches
+      
+      // Check if user is a validator (isVisitor) or website owner
+      const isValidator = user.isVisitor || user.role === "Validator"
+      
+      if (isValidator) {
+        // Validator activities - show pings they performed
+        userActivities = pings
+          .filter(ping => ping.checked_by_uid === user.id || ping.uid === user.id)
+          .sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at))
+          .slice(0, 10)
+          .map(ping => {
+            const website = websites.find(w => w.wid === ping.wid)
+            return {
+              id: ping.pid || `ping-${Date.now()}-${Math.random()}`,
+              type: ping.is_up ? "ping_success" : "ping_failed",
+              message: ping.is_up ? "Site validation successful" : "Site validation failed",
+              timestamp: ping.timestamp || ping.created_at,
+              url: website?.url || website?.name || `Website ID: ${ping.wid}`,
+              responseTime: ping.latency_ms,
+              region: ping.region,
+              txHash: ping.tx_hash,
+              fee: ping.fee_paid_numeric || 0,
+            }
           })
-          .sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at))
-          .slice(0, 10)
-
-        console.log(`RecentActivity - Found ${userPings.length} validator pings`)
-
-        userActivities = userPings.map((ping) => {
-          // Try to find the website for this ping
-          const website = websites.find((w) => w.wid === ping.wid)
-          const websiteUrl = website?.url || website?.name || `Website ID: ${ping.wid}`
-
-          const activity = {
-            id: ping.pid,
-            type: ping.is_up ? "ping_success" : "ping_failed",
-            message: ping.is_up ? "Site validation successful" : "Site validation failed",
-            timestamp: ping.timestamp || ping.created_at,
-            url: websiteUrl,
-            responseTime: ping.latency_ms,
-            region: ping.region,
-            txHash: ping.tx_hash,
-            fee: ping.fee_paid_numeric || 0,
-          }
-
-          console.log("RecentActivity - Generated validator activity:", activity)
-          return activity
-        })
       } else {
-        console.log("RecentActivity - Processing website owner activities...")
         // Website owner activities - show pings for their websites
-        const userWebsites = websites.filter((website) => website.uid === user.id)
-        console.log(`RecentActivity - Found ${userWebsites.length} user websites`)
-
-        const websitePings = pings
-          .filter((ping) => userWebsites.some((w) => w.wid === ping.wid))
+        const userWebsiteIds = websites
+          .filter(website => website.uid === user.id)
+          .map(website => website.wid)
+        
+        userActivities = pings
+          .filter(ping => userWebsiteIds.includes(ping.wid))
           .sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at))
           .slice(0, 10)
-
-        console.log(`RecentActivity - Found ${websitePings.length} website pings`)
-
-        userActivities = websitePings.map((ping) => {
-          const website = userWebsites.find((w) => w.wid === ping.wid)
-          const activity = {
-            id: ping.pid,
-            type: ping.is_up ? "site_up" : "site_down",
-            message: ping.is_up ? "Site is online" : "Site is offline",
-            timestamp: ping.timestamp || ping.created_at,
-            url: website?.url || website?.name || `Website ID: ${ping.wid}`,
-            responseTime: ping.latency_ms,
-            region: ping.region,
-            txHash: ping.tx_hash,
-          }
-
-          console.log("RecentActivity - Generated website activity:", activity)
-          return activity
-        })
+          .map(ping => {
+            const website = websites.find(w => w.wid === ping.wid)
+            return {
+              id: ping.pid || `ping-${Date.now()}-${Math.random()}`,
+              type: ping.is_up ? "site_up" : "site_down",
+              message: ping.is_up ? "Site is online" : "Site is offline",
+              timestamp: ping.timestamp || ping.created_at,
+              url: website?.url || website?.name || `Website ID: ${ping.wid}`,
+              responseTime: ping.latency_ms,
+              region: ping.region,
+            }
+          })
       }
-
-      console.log(`RecentActivity - Final activities generated:`, userActivities)
+      
       setActivities(userActivities)
     } catch (error) {
-      console.error("RecentActivity - Error generating activities:", error)
+      console.error("Error generating activities:", error)
       setActivities([])
     } finally {
       setIsLoading(false)
     }
   }
 
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case "ping_success":
-      case "site_up":
-        return <CheckCircle className="h-3 w-3 text-violet-600 dark:text-violet-400" />
-      case "ping_failed":
-      case "site_down":
-        return <XCircle className="h-3 w-3 text-red-500 dark:text-red-400" />
-      default:
-        return <Activity className="h-3 w-3 text-violet-600 dark:text-violet-400" />
-    }
-  }
-
-  const getActivityColor = (type) => {
-    switch (type) {
-      case "ping_success":
-      case "site_up":
-        return "border-l-violet-500"
-      case "ping_failed":
-      case "site_down":
-        return "border-l-red-500"
-      default:
-        return "border-l-violet-500"
-    }
-  }
-
   const formatTimeAgo = (timestamp) => {
-    const now = new Date()
-    const time = new Date(timestamp)
-    const diffInSeconds = Math.floor((now - time) / 1000)
+    if (!timestamp) return "Unknown time"
+    
+    try {
+      const now = new Date()
+      const time = new Date(timestamp)
+      const diffInSeconds = Math.floor((now - time) / 1000)
 
-    if (diffInSeconds < 60) return "Now"
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-    return `${Math.floor(diffInSeconds / 86400)}d ago`
+      if (diffInSeconds < 60) return "Now"
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+      return `${Math.floor(diffInSeconds / 86400)}d ago`
+    } catch (e) {
+      return "Invalid date"
+    }
   }
-
-  console.log("RecentActivity - Render state:", {
-    activitiesCount: activities.length,
-    isLoading,
-  })
 
   return (
-    <Card className="floating-card">
+    <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-lg hover:shadow-xl transition-all duration-300">
       <CardContent className="p-0">
-        <div className="p-3 sm:p-4 border-b border-border/50">
-          <div className="flex items-center gap-2">
-            <div className="p-1 rounded bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm">
-              <Activity className="h-3 w-3 text-white" />
+        <div className="p-4 border-b border-border/30">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm">
+              <Activity className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Activity</h3>
-              <p className="text-xs text-muted-foreground">Recent updates • {activities.length} items</p>
+              <h3 className="text-sm font-semibold text-foreground">Recent Activity</h3>
+              <p className="text-xs text-muted-foreground">
+                Latest updates • {isLoading ? "..." : activities.length} items
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="max-h-64 sm:max-h-80 overflow-y-auto mobile-scroll">
+        <div className="max-h-80 overflow-y-auto">
           {isLoading ? (
-            <div className="p-3 space-y-3">
+            <div className="p-4 space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <Skeleton className="h-3 w-3 rounded-full loading-shimmer flex-shrink-0 mt-1" />
-                  <div className="flex-1 space-y-1">
-                    <Skeleton className="h-3 w-full loading-shimmer" />
-                    <Skeleton className="h-2 w-16 loading-shimmer" />
+                <div key={i} className="flex items-start gap-3">
+                  <Skeleton className="h-4 w-4 rounded-full bg-muted/50 flex-shrink-0 mt-1" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-3 w-full bg-muted/50" />
+                    <Skeleton className="h-2 w-20 bg-muted/50" />
                   </div>
                 </div>
               ))}
             </div>
           ) : activities.length === 0 ? (
-            <div className="p-6 text-center">
-              <div className="mx-auto w-8 h-8 rounded-lg bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-950/20 dark:to-purple-950/20 flex items-center justify-center mb-2">
-                <Activity className="h-4 w-4 text-violet-600" />
+            <div className="p-8 text-center">
+              <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-950/20 dark:to-purple-950/20 flex items-center justify-center mb-3">
+                <Activity className="h-6 w-6 text-violet-600" />
               </div>
-              <h4 className="text-sm font-medium text-foreground mb-1">No Recent Activity</h4>
-              <p className="text-xs text-muted-foreground">
-                {user?.isVisitor
-                  ? "Start validating sites to see activity."
+              <h4 className="text-sm font-medium text-foreground mb-2">No Recent Activity</h4>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                {user && (user.isVisitor || user.role === "Validator")
+                  ? "Start validating sites to see your activity here."
                   : "Add websites to see monitoring activity."}
               </p>
-              <div className="mt-4 text-xs bg-muted/50 p-3 rounded-lg">
-                <p>
-                  <strong>Debug Info:</strong>
-                </p>
-                <p>User ID: {user?.id}</p>
-                <p>Is Visitor: {user?.isVisitor ? "Yes" : "No"}</p>
-                <p>Total Pings: {pings.length}</p>
-                <p>Websites: {websites.length}</p>
-              </div>
             </div>
           ) : (
-            <div className="p-2 sm:p-3 space-y-2">
+            <div className="p-3 space-y-2">
               {activities.map((activity) => (
                 <div
                   key={activity.id}
-                  className={`flex items-start gap-2 p-2 rounded-lg border-l-2 ${getActivityColor(activity.type)} text-blue-600 dark:text-blue-400 hover:bg-emerald-600/20 transition-colors`}
+                  className={`flex items-start gap-3 p-3 rounded-lg border-l-2 ${
+                    activity.type === "ping_success" || activity.type === "site_up" 
+                      ? "border-l-emerald-500" 
+                      : "border-l-red-500"
+                  } bg-card/30 hover:bg-card/50 transition-all duration-200`}
                 >
-                  <div className="flex-shrink-0 mt-0.5">{getActivityIcon(activity.type)}</div>
+                  <div className="flex-shrink-0 mt-0.5">
+                    {activity.type === "ping_success" || activity.type === "site_up" ? (
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-foreground">{activity.message}</p>
-                        <p className="text-xs text-muted-foreground truncate font-mono">
+                        <p className="text-xs text-muted-foreground truncate mt-1">
                           {activity.url.replace(/^https?:\/\//, "")}
                         </p>
                         {activity.region && (
-                          <p className="text-xs text-violet-600 dark:text-violet-400">📍 {activity.region}</p>
+                          <p className="text-xs text-violet-600 dark:text-violet-400 mt-1 flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> {activity.region}
+                          </p>
                         )}
                       </div>
-                      <div className="flex-shrink-0 text-right">
-                        <p className="text-xs text-muted-foreground">{formatTimeAgo(activity.timestamp)}</p>
+                      <div className="flex-shrink-0 text-right space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          {activity.timestamp ? formatTimeAgo(activity.timestamp) : "Unknown time"}
+                        </p>
                         {activity.responseTime && (
-                          <p className="text-xs text-muted-foreground">{activity.responseTime}ms</p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <Zap className="h-3 w-3" /> {activity.responseTime}ms
+                          </p>
                         )}
                         {activity.fee > 0 && (
-                          <p className="text-xs text-purple-600 dark:text-purple-400">+{activity.fee.toFixed(4)} ETH</p>
+                          <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" /> +{activity.fee.toFixed(4)} ETH
+                          </p>
                         )}
                       </div>
                     </div>
