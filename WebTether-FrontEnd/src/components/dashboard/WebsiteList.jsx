@@ -35,6 +35,9 @@ export default function WebsiteList({ websites = [], setWebsites, onWebsiteAdded
   const [deletingIds, setDeletingIds] = useState(new Set())
   const [showAddDialog, setShowAddDialog] = useState(false)
 
+  // Ensure websites is always an array
+  const websitesArray = Array.isArray(websites) ? websites : []
+
   useEffect(() => {
     if (user) {
       fetchWebsites()
@@ -203,7 +206,7 @@ export default function WebsiteList({ websites = [], setWebsites, onWebsiteAdded
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header - Only show when there are websites */}
-      {websites.length > 0 && (
+      {websitesArray.length > 0 && (
         <div className="flex items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 shadow-md">
@@ -211,7 +214,7 @@ export default function WebsiteList({ websites = [], setWebsites, onWebsiteAdded
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-semibold text-foreground">Websites</h2>
-              <p className="text-xs text-muted-foreground">{websites.length} sites</p>
+              <p className="text-xs text-muted-foreground">{websitesArray.length} sites</p>
             </div>
           </div>
 
@@ -229,7 +232,7 @@ export default function WebsiteList({ websites = [], setWebsites, onWebsiteAdded
 
       {/* Website List */}
       <AnimatePresence mode="wait">
-        {websites.length === 0 ? (
+        {websitesArray.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -259,7 +262,7 @@ export default function WebsiteList({ websites = [], setWebsites, onWebsiteAdded
             exit={{ opacity: 0 }}
             className="space-y-3 sm:space-y-4"
           >
-            {websites.slice(0, compact ? 3 : websites.length).map((website, index) => (
+            {websitesArray.slice(0, compact ? 3 : websitesArray.length).map((website, index) => (
               <motion.div
                 key={website.wid}
                 initial={{ opacity: 0, y: 20 }}
@@ -374,13 +377,13 @@ export default function WebsiteList({ websites = [], setWebsites, onWebsiteAdded
               </motion.div>
             ))}
 
-            {compact && websites.length > 3 && (
+            {compact && websitesArray.length > 3 && (
               <div className="text-center pt-2">
                 <Button
                   variant="outline"
                   className="btn-secondary rounded-lg bg-transparent w-full sm:w-auto text-xs h-8"
                 >
-                  View All {websites.length} Sites
+                  View All {websitesArray.length} Sites
                 </Button>
               </div>
             )}
@@ -390,6 +393,6 @@ export default function WebsiteList({ websites = [], setWebsites, onWebsiteAdded
 
       {/* Add Website Dialog */}
       <AddWebsiteDialog open={showAddDialog} onOpenChange={setShowAddDialog} onWebsiteAdded={handleWebsiteAdded} />
-    </div>
+      </div>
   )
 }

@@ -1,17 +1,18 @@
 "use client"
 
 import { useState } from "react"
+import { useTheme } from "../../contexts/ThemeContext"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { websiteAPI } from "../../services/api"
 import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../hooks/use-toast"
 import { LoadingSpinner } from "./LoadingSpinner"
 import { WebsiteAddedAnimation } from "../animations/WebsiteAddedAnimation"
-import { Globe, AlertCircle, CheckCircle } from "lucide-react"
+import { Globe, AlertCircle, CheckCircle, X } from "lucide-react"
+import { api } from "../../services/api"
 
 const CATEGORIES = [
   { value: "ecommerce", label: "E-commerce" },
@@ -27,6 +28,7 @@ const CATEGORIES = [
 ]
 
 export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
+  const { theme } = useTheme()
   const { user } = useAuth()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -38,6 +40,8 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
     reward_per_ping: 0.0001,
   })
   const [errors, setErrors] = useState({})
+  
+  const isDark = theme === "dark"
 
   const validateUrl = (url) => {
     try {
@@ -85,8 +89,6 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
       return
     }
 
-    console.log("🚀 Starting website addition process...")
-
     try {
       setIsSubmitting(true)
 
@@ -101,10 +103,8 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
         reward_per_ping: Number.parseFloat(formData.reward_per_ping),
       }
 
-      console.log("📤 Sending website data:", websiteData)
-
-      const response = await websiteAPI.addWebsite(websiteData)
-      console.log("✅ Website added successfully:", response)
+      // Use the correct API method
+      const response = await api.createWebsite(websiteData)
 
       // Reset form
       setFormData({
@@ -121,7 +121,6 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
       })
 
       // Close dialog first
-      console.log("🔄 Closing dialog...")
       onOpenChange(false)
 
       // Call the callback to update parent state
@@ -130,13 +129,11 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
       }
 
       // Show animation after a delay to ensure dialog is closed
-      console.log("🎬 Starting animation in 500ms...")
       setTimeout(() => {
-        console.log("🎬 Triggering animation now!")
         setShowAnimation(true)
       }, 500)
     } catch (error) {
-      console.error("❌ Error adding website:", error)
+      console.error("Error adding website:", error)
       toast({
         title: "Error",
         description: error.message || "Failed to add website. Please try again.",
@@ -168,30 +165,52 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
   }
 
   const handleAnimationComplete = () => {
-    console.log("🎬 Animation completed, cleaning up...")
     setShowAnimation(false)
   }
 
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-md modern-card">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-foreground">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
-                <Globe className="h-4 w-4 text-white" />
+        <DialogContent 
+          className="sm:max-w-md p-0 overflow-hidden rounded-2xl border backdrop-blur-sm"
+          style={{ 
+            background: isDark 
+              ? 'linear-gradient(to bottom right, rgba(30, 41, 59, 0.8), rgba(30, 64, 175, 0.3))' 
+              : 'linear-gradient(to bottom right, rgba(255, 255, 255, 0.8), rgba(219, 234, 254, 0.5))',
+            borderColor: isDark ? 'rgba(30, 64, 175, 0.3)' : 'rgba(191, 219, 254, 0.5)'
+          }}
+        >
+          <div className="p-6 border-b" style={{ borderColor: isDark ? 'rgba(30, 64, 175, 0.3)' : 'rgba(191, 219, 254, 0.5)' }}>
+            <DialogHeader className="flex flex-row items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600">
+                  <Globe className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <DialogTitle className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                    Add Website
+                  </DialogTitle>
+                  <DialogDescription className={isDark ? "text-slate-300" : "text-slate-600"}>
+                    Monitor uptime and earn from validator pings
+                  </DialogDescription>
+                </div>
               </div>
-              Add Website
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Add a new website to monitor its uptime and earn from validator pings.
-            </DialogDescription>
-          </DialogHeader>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                disabled={isSubmitting}
+                className={`h-8 w-8 rounded-lg ${isDark ? "hover:bg-slate-700/50 text-slate-300" : "hover:bg-slate-100 text-slate-500"}`}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {/* URL Field */}
             <div className="space-y-2">
-              <Label htmlFor="url" className="text-sm font-medium text-foreground">
+              <Label htmlFor="url" className={`text-sm font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Website URL *
               </Label>
               <Input
@@ -201,10 +220,17 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
                 value={formData.url}
                 onChange={(e) => handleInputChange("url", e.target.value)}
                 disabled={isSubmitting}
-                className={`modern-input ${errors.url ? "border-red-500 focus:border-red-500" : ""}`}
+                className={`
+                  rounded-xl border backdrop-blur-sm
+                  ${isDark 
+                    ? "bg-slate-800/40 border-slate-700 text-white placeholder:text-slate-400 focus:border-blue-500" 
+                    : "bg-white/60 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-blue-400"
+                  }
+                  ${errors.url ? "border-red-500 focus:border-red-500" : ""}
+                `}
               />
               {errors.url && (
-                <div className="flex items-center gap-1 text-sm text-red-600">
+                <div className="flex items-center gap-1 text-sm text-red-500">
                   <AlertCircle className="h-3 w-3" />
                   {errors.url}
                 </div>
@@ -213,9 +239,9 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
 
             {/* Name Field */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium text-foreground">
+              <Label htmlFor="name" className={`text-sm font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Website Name
-                <span className="text-xs text-muted-foreground ml-1">(optional)</span>
+                <span className="text-xs ml-1 text-slate-400">(optional)</span>
               </Label>
               <Input
                 id="name"
@@ -224,14 +250,22 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 disabled={isSubmitting}
-                className="modern-input"
+                className={`
+                  rounded-xl border backdrop-blur-sm
+                  ${isDark 
+                    ? "bg-slate-800/40 border-slate-700 text-white placeholder:text-slate-400 focus:border-blue-500" 
+                    : "bg-white/60 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-blue-400"
+                  }
+                `}
               />
-              <p className="text-xs text-muted-foreground">If not provided, we'll generate a name from the URL</p>
+              <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                If not provided, we'll generate a name from the URL
+              </p>
             </div>
 
             {/* Category Field */}
             <div className="space-y-2">
-              <Label htmlFor="category" className="text-sm font-medium text-foreground">
+              <Label htmlFor="category" className={`text-sm font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Category *
               </Label>
               <Select
@@ -239,19 +273,41 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
                 onValueChange={(value) => handleInputChange("category", value)}
                 disabled={isSubmitting}
               >
-                <SelectTrigger className={`modern-input ${errors.category ? "border-red-500" : ""}`}>
+                <SelectTrigger className={`
+                  rounded-xl border backdrop-blur-sm
+                  ${isDark 
+                    ? "bg-slate-800/40 border-slate-700 text-white focus:border-blue-500" 
+                    : "bg-white/60 border-slate-200 text-slate-900 focus:border-blue-400"
+                  }
+                  ${errors.category ? "border-red-500 focus:border-red-500" : ""}
+                `}>
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
-                <SelectContent className="modern-card">
+                <SelectContent className={`
+                  rounded-xl border backdrop-blur-sm
+                  ${isDark 
+                    ? "bg-slate-800 border-slate-700 text-white" 
+                    : "bg-white border-slate-200 text-slate-900"
+                  }
+                `}>
                   {CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
+                    <SelectItem 
+                      key={category.value} 
+                      value={category.value}
+                      className={`
+                        ${isDark 
+                          ? "focus:bg-slate-700/50" 
+                          : "focus:bg-slate-100/50"
+                        }
+                      `}
+                    >
                       {category.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {errors.category && (
-                <div className="flex items-center gap-1 text-sm text-red-600">
+                <div className="flex items-center gap-1 text-sm text-red-500">
                   <AlertCircle className="h-3 w-3" />
                   {errors.category}
                 </div>
@@ -260,7 +316,7 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
 
             {/* Reward Field */}
             <div className="space-y-2">
-              <Label htmlFor="reward" className="text-sm font-medium text-foreground">
+              <Label htmlFor="reward" className={`text-sm font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Reward per Ping (ETH)
               </Label>
               <Input
@@ -272,10 +328,17 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
                 value={formData.reward_per_ping}
                 onChange={(e) => handleInputChange("reward_per_ping", e.target.value)}
                 disabled={isSubmitting}
-                className={`modern-input ${errors.reward_per_ping ? "border-red-500" : ""}`}
+                className={`
+                  rounded-xl border backdrop-blur-sm
+                  ${isDark 
+                    ? "bg-slate-800/40 border-slate-700 text-white placeholder:text-slate-400 focus:border-blue-500" 
+                    : "bg-white/60 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-blue-400"
+                  }
+                  ${errors.reward_per_ping ? "border-red-500" : ""}
+                `}
               />
               {errors.reward_per_ping && (
-                <div className="flex items-center gap-1 text-sm text-red-600">
+                <div className="flex items-center gap-1 text-sm text-red-500">
                   <AlertCircle className="h-3 w-3" />
                   {errors.reward_per_ping}
                 </div>
@@ -289,14 +352,20 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }) {
                 variant="outline"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                className="flex-1 btn-secondary bg-transparent"
+                className={`
+                  flex-1 rounded-xl border backdrop-blur-sm
+                  ${isDark 
+                    ? "bg-slate-800/40 border-slate-700 text-slate-200 hover:bg-slate-700/50" 
+                    : "bg-white/60 border-slate-200 text-slate-700 hover:bg-slate-100/50"
+                  }
+                `}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting || !formData.url || !formData.category}
-                className="flex-1 btn-primary"
+                className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-500 hover:to-blue-600"
               >
                 {isSubmitting ? (
                   <>

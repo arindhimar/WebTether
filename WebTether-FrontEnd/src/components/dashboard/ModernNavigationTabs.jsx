@@ -8,7 +8,8 @@ const ModernNavigationTabs = ({ activeTab = "Overview", onTabChange }) => {
 
   const tabs = [
     { id: "Overview", label: "Overview", icon: "📊" },
-    { id: "Available Sites", label: "Available Sites", icon: "🌐" },
+    { id: "My Sites", label: "My Sites", icon: "🌐" },
+    { id: "Available Sites", label: "Available Sites", icon: "🔍" },
     { id: "Recent Activity", label: "Recent Activity", icon: "🕒" },
     { id: "Wallet", label: "Wallet", icon: "💳" },
     { id: "Settings", label: "Settings", icon: "⚙️" },

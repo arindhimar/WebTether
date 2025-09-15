@@ -11,6 +11,7 @@ import ModernActivitySection from "../components/dashboard/ModernActivitySection
 import AvailableSites from "../components/dashboard/AvailableSites"
 import UserSettings from "../components/dashboard/UserSettings"
 import RecentActivity from "../components/dashboard/RecentActivity"
+import WebsiteList from "../components/dashboard/WebsiteList"
 import { api } from "../services/api"
 
 const ModernDashboard = () => {
@@ -223,6 +224,16 @@ const ModernDashboard = () => {
         return (
           <div className="space-y-6">
             <AvailableSites />
+          </div>
+        )
+      case "My Sites":
+        return (
+          <div className="space-y-6">
+            <WebsiteList 
+              websites={dashboardData.websites} 
+              setWebsites={(websites) => setDashboardData(prev => ({...prev, websites}))}
+              compact={false}
+            />
           </div>
         )
       case "Recent Activity":

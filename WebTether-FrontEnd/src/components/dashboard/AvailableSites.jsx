@@ -67,18 +67,21 @@ export default function AvailableSites() {
     try {
       setPingingIds((prev) => new Set([...prev, site.wid]))
       setPingingSiteUrl(site.url)
-
       setShowPingAnimation(true)
 
       console.log(`🎯 Starting ping for ${site.url}...`)
 
+      // Generate a mock transaction hash
+      const mockTxHash = `TX-${Math.floor(Math.random() * 20 + 1).toString().padStart(3, '0')}`
+
       const pingData = {
         wid: site.wid,
         url: site.url,
+        tx_hash: mockTxHash, // Add transaction hash
         timestamp: new Date().toISOString(),
       }
 
-      const pingResponse = await pingAPI.createPing(pingData)
+      const pingResponse = await pingAPI.manualPing(pingData)
       console.log("✅ Ping successful:", pingResponse)
 
       const responseTime = pingResponse.response_time || Math.floor(Math.random() * 200) + 50
@@ -103,12 +106,12 @@ export default function AvailableSites() {
         prev.map((s) =>
           s.wid === site.wid
             ? {
-                ...s,
-                lastPing: new Date().toISOString(),
-                status: "up",
-                responseTime: responseTime,
-                lastPingSuccess: true,
-              }
+              ...s,
+              lastPing: new Date().toISOString(),
+              status: "up",
+              responseTime: responseTime,
+              lastPingSuccess: true,
+            }
             : s,
         ),
       )
@@ -138,11 +141,11 @@ export default function AvailableSites() {
         prev.map((s) =>
           s.wid === site.wid
             ? {
-                ...s,
-                lastPing: new Date().toISOString(),
-                status: "down",
-                lastPingSuccess: false,
-              }
+              ...s,
+              lastPing: new Date().toISOString(),
+              status: "down",
+              lastPingSuccess: false,
+            }
             : s,
         ),
       )
