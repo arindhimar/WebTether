@@ -201,22 +201,22 @@ export default function AvailableSites() {
     return (
       <div className="space-y-4 sm:space-y-6">
         <div className="flex items-center gap-2 mb-4">
-          <Skeleton className="h-5 w-5 rounded loading-shimmer" />
-          <Skeleton className="h-6 w-40 loading-shimmer" />
+          <Skeleton className="h-5 w-5 rounded bg-slate-200 dark:bg-slate-700" />
+          <Skeleton className="h-6 w-40 bg-slate-200 dark:bg-slate-700" />
         </div>
         <div className="space-y-3 sm:space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Card key={i} className="modern-card">
+            <Card key={i} className="bg-white/60 dark:bg-slate-800/40 border border-blue-200/60 dark:border-blue-800/40 rounded-2xl shadow-lg">
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 sm:gap-3 flex-1">
-                    <Skeleton className="h-5 w-5 sm:h-6 sm:w-6 rounded-full loading-shimmer" />
+                    <Skeleton className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-slate-200 dark:bg-slate-700" />
                     <div className="space-y-1.5 flex-1">
-                      <Skeleton className="h-3 sm:h-4 w-24 sm:w-32 loading-shimmer" />
-                      <Skeleton className="h-2.5 sm:h-3 w-20 sm:w-28 loading-shimmer" />
+                      <Skeleton className="h-3 sm:h-4 w-24 sm:w-32 bg-slate-200 dark:bg-slate-700" />
+                      <Skeleton className="h-2.5 sm:h-3 w-20 sm:w-28 bg-slate-200 dark:bg-slate-700" />
                     </div>
                   </div>
-                  <Skeleton className="h-7 sm:h-8 w-12 sm:w-16 loading-shimmer rounded" />
+                  <Skeleton className="h-7 sm:h-8 w-12 sm:w-16 bg-slate-200 dark:bg-slate-700 rounded" />
                 </div>
               </CardContent>
             </Card>
@@ -236,7 +236,7 @@ export default function AvailableSites() {
             onClick={fetchAvailableSites}
             variant="outline"
             size="sm"
-            className="ml-2 btn-secondary bg-transparent h-7 px-2 text-xs"
+            className="ml-2 bg-transparent h-7 px-2 text-xs"
           >
             <RefreshCw className="h-3 w-3 mr-1" />
             Retry
@@ -250,12 +250,12 @@ export default function AvailableSites() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md">
+          <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
             <Target className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-semibold text-foreground">Available Sites</h2>
-            <p className="text-xs text-muted-foreground">{sites.length} sites available for pinging</p>
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Available Sites</h2>
+            <p className="text-xs text-slate-600 dark:text-slate-300">{sites.length} sites available for pinging</p>
           </div>
         </div>
 
@@ -263,7 +263,7 @@ export default function AvailableSites() {
           onClick={fetchAvailableSites}
           variant="outline"
           size="sm"
-          className="btn-secondary rounded-lg px-3 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm flex-shrink-0 bg-transparent"
+          className="rounded-lg px-3 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm flex-shrink-0 bg-transparent border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
         >
           <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />
           <span className="hidden sm:inline">Refresh</span>
@@ -278,17 +278,17 @@ export default function AvailableSites() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="text-center py-8 sm:py-12"
           >
-            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-950/20 dark:to-teal-950/20 flex items-center justify-center mb-3 sm:mb-4">
-              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-600" />
+            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center mb-3 sm:mb-4">
+              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
             </div>
-            <h3 className="text-base sm:text-lg font-semibold mb-1 text-foreground">No sites available</h3>
-            <p className="text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-4">
+            <h3 className="text-base sm:text-lg font-semibold mb-1 text-slate-900 dark:text-white">No sites available</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 sm:mb-6 max-w-sm mx-auto px-4">
               There are currently no websites available for pinging. Check back later for new opportunities.
             </p>
             <Button
               onClick={fetchAvailableSites}
               variant="outline"
-              className="btn-secondary rounded-lg px-4 sm:px-6 h-9 sm:h-10 text-sm bg-transparent"
+              className="rounded-lg px-4 sm:px-6 h-9 sm:h-10 text-sm bg-transparent border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               <RefreshCw className="h-4 w-4 mr-1.5" />
               Check Again
@@ -309,22 +309,22 @@ export default function AvailableSites() {
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 className={celebrationSite?.wid === site.wid ? "relative" : ""}
               >
-                <Card className="modern-card group hover:shadow-md transition-all duration-200 relative overflow-hidden">
+                <Card className="bg-white/60 dark:bg-slate-800/40 border border-blue-200/60 dark:border-blue-800/40 rounded-2xl shadow-lg group hover:shadow-xl transition-all duration-200 relative overflow-hidden">
                   {celebrationSite?.wid === site.wid && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
-                      className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 backdrop-blur-sm z-10 flex items-center justify-center"
+                      className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-blue-600/20 backdrop-blur-sm z-10 flex items-center justify-center"
                     >
                       <motion.div
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         className="text-center"
                       >
-                        <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-                        <p className="text-sm font-semibold text-emerald-600">Ping Successful!</p>
-                        <p className="text-xs text-emerald-500">+{site.reward_per_ping || 0.001} ETH</p>
+                        <CheckCircle className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+                        <p className="text-sm font-semibold text-blue-600">Ping Successful!</p>
+                        <p className="text-xs text-blue-500">+{site.reward_per_ping || 0.001} ETH</p>
                       </motion.div>
                     </motion.div>
                   )}
@@ -341,17 +341,17 @@ export default function AvailableSites() {
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
-                            <h3 className="font-semibold text-sm text-foreground truncate">
+                            <h3 className="font-semibold text-sm text-slate-900 dark:text-white truncate">
                               {site.name || site.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                             </h3>
-                            <Badge className="text-xs px-1.5 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300">
+                            <Badge className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
                               {site.category}
                             </Badge>
                           </div>
 
-                          <p className="text-xs text-muted-foreground truncate font-mono mb-1.5">{site.url}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate font-mono mb-1.5">{site.url}</p>
 
-                          <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2 sm:gap-3 text-xs text-slate-600 dark:text-slate-400">
                             <div className="flex items-center gap-0.5">
                               <DollarSign className="h-2.5 w-2.5 text-emerald-500" />
                               <span>{site.reward_per_ping || 0.001} per ping</span>
@@ -386,7 +386,7 @@ export default function AvailableSites() {
                         onClick={() => handlePingSite(site)}
                         disabled={pingingIds.has(site.wid)}
                         size="sm"
-                        className="btn-primary rounded-lg px-3 sm:px-4 h-7 sm:h-8 text-xs flex-shrink-0 relative overflow-hidden"
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 sm:px-4 h-7 sm:h-8 text-xs flex-shrink-0 relative overflow-hidden"
                       >
                         {pingingIds.has(site.wid) ? (
                           <>

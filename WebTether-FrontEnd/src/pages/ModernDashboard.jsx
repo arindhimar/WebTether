@@ -46,7 +46,7 @@ const ModernDashboard = () => {
           setUser(authUser)
           return
         }
-        
+
         // Fallback to localStorage
         const storedUser = JSON.parse(localStorage.getItem("user") || "{}")
         if (storedUser && storedUser.id) {
@@ -56,7 +56,7 @@ const ModernDashboard = () => {
         console.error("Error loading user data:", error)
       }
     }
-    
+
     loadUserData()
   }, [authUser])
 
@@ -72,6 +72,27 @@ const ModernDashboard = () => {
     }
     return false
   }
+  const getFilteredActivities = () => {
+    if (!user) return [];
+
+    const isValidator = user.isVisitor || user.role === "Validator";
+
+    if (isValidator) {
+      return dashboardData.pings
+        .filter(ping => ping.checked_by_uid === user.id || ping.uid === user.id)
+        .sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at))
+        .slice(0, 5);
+    } else {
+      const userWebsiteIds = dashboardData.websites
+        .filter(website => website.uid === user.id)
+        .map(website => website.wid);
+
+      return dashboardData.pings
+        .filter(ping => userWebsiteIds.includes(ping.wid))
+        .sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at))
+        .slice(0, 5);
+    }
+  };
 
   const fetchDashboardData = async (isRefresh = false) => {
     try {
@@ -175,8 +196,7 @@ const ModernDashboard = () => {
               </div>
               <div className="lg:col-span-2">
                 <ModernActivitySection
-                  transactions={dashboardData.transactions}
-                  pings={dashboardData.pings}
+                  activities={getFilteredActivities()}
                   loading={fetchingData}
                 />
               </div>
@@ -185,9 +205,8 @@ const ModernDashboard = () => {
             {!fetchingData && dashboardData.websites.length === 0 && (
               <div className="text-center py-16">
                 <div
-                  className={`p-8 rounded-3xl backdrop-blur-sm border transition-all hover:scale-[1.02] ${
-                    isDark ? "bg-slate-800/40 border-blue-800/40" : "bg-white/60 border-blue-200/60"
-                  }`}
+                  className={`p-8 rounded-3xl backdrop-blur-sm border transition-all hover:scale-[1.02] ${isDark ? "bg-slate-800/40 border-blue-800/40" : "bg-white/60 border-blue-200/60"
+                    }`}
                 >
                   <div
                     className={`w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg`}
@@ -229,9 +248,9 @@ const ModernDashboard = () => {
       case "My Sites":
         return (
           <div className="space-y-6">
-            <WebsiteList 
-              websites={dashboardData.websites} 
-              setWebsites={(websites) => setDashboardData(prev => ({...prev, websites}))}
+            <WebsiteList
+              websites={dashboardData.websites}
+              setWebsites={(websites) => setDashboardData(prev => ({ ...prev, websites }))}
               compact={false}
             />
           </div>
@@ -241,7 +260,7 @@ const ModernDashboard = () => {
           <div className="space-y-6">
             <RecentActivity
               websites={dashboardData.websites}
-              pings={dashboardData.pings} 
+              pings={dashboardData.pings}
               user={user}
             />
           </div>
@@ -252,9 +271,8 @@ const ModernDashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ModernBalanceSection balance={dashboardData.balance} loading={fetchingData} />
               <div
-                className={`p-6 rounded-2xl backdrop-blur-sm border ${
-                  isDark ? "bg-slate-800/40 border-blue-800/40" : "bg-white/60 border-blue-200/60"
-                }`}
+                className={`p-6 rounded-2xl backdrop-blur-sm border ${isDark ? "bg-slate-800/40 border-blue-800/40" : "bg-white/60 border-blue-200/60"
+                  }`}
               >
                 <h3
                   className={`text-xl font-semibold mb-4 bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent`}
@@ -305,11 +323,10 @@ const ModernDashboard = () => {
 
   return (
     <div
-      className={`min-h-screen transition-all duration-300 ${
-        isDark
-          ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800"
-          : "bg-gradient-to-br from-blue-50 via-white to-blue-100"
-      }`}
+      className={`min-h-screen transition-all duration-300 ${isDark
+        ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800"
+        : "bg-gradient-to-br from-blue-50 via-white to-blue-100"
+        }`}
     >
       <ModernDashboardHeader />
 
